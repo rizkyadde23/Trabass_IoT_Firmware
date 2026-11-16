@@ -1,10 +1,14 @@
 /*
   Trabass IoT - Security System Sepeda Sewa (ESP32)
-  Milestone 2: WiFi + MQTT skeleton
+  Milestone 3: telemetri GPS + IMU + lock state
 
   Arsitektur file:
     sketch_nov16a.ino  -> orkestrasi setup()/loop() + menu serial
-    mqtt_link.*        -> WiFi/MQTT, reconnect, heartbeat, antrean command
+    gps_sensor.*       -> parsing NMEA non-blocking, hasFix + lat/lng/speed
+    imu_sensor.*       -> sampling MPU6050 + klasifikasi mpu_motion
+    battery_sensor.*   -> stub (ENABLE_BATTERY_SENSOR 0)
+    telemetry.*        -> builder payload + publish periodik
+    mqtt_link.*        -> WiFi/MQTT, reconnect, antrean command
     self_test.*        -> tes komponen baseline (LCD, buzzer, relay, MPU, GPS, SIM, SMS)
     config.h           -> konfigurasi lokal (meng-include config.example.h)
 
@@ -13,8 +17,9 @@
   Serial Monitor: 115200 baud, line ending "Both NL & CR".
 
   Perintah:
-    n      = status jaringan (WiFi/MQTT/IP/RSSI)
-    m      = publish heartbeat sekarang
+    n      = status jaringan + sensor (GPS/IMU/baterai)
+    m      = publish telemetri sekarang
+    t      = cetak payload telemetri tanpa publish
     a      = tes otomatis semua (kecuali relay)
     1      = tes LCD
     2      = tes buzzer
@@ -27,10 +32,13 @@
     h      = bantuan
     AT...  = perintah AT langsung ke SIM800L (contoh: AT+CSQ)
 
-  Catatan M2:
+  Catatan M3:
     - tesSemua() TIDAK dijalankan otomatis saat boot.
+    - Telemetri dikirim tiap TELEMETRY_INTERVAL_MS (default 5 dtk) dan
+      segera setelah MQTT reconnect.
+    - Saat GPS belum fix, payload memakai lat/lng null; backend tetap
+      menyimpan IMU/lock dan melewati log/geofence.
     - Command MQTT baru dicatat di Serial; eksekusi aktuator di M4.
-    - Heartbeat memakai topik telemetri dengan type "heartbeat".
 */
 
 #include <Wire.h>
@@ -38,8 +46,12 @@
 #include <TinyGPSPlus.h>
 
 #include "config.h"
+#include "battery_sensor.h"
+#include "gps_sensor.h"
+#include "imu_sensor.h"
 #include "mqtt_link.h"
 #include "self_test.h"
+#include "telemetry.h"
 
 // ------------------------------------------------------------------
 // Objek hardware global (diakses juga oleh self_test.cpp via extern)
@@ -65,13 +77,13 @@ static void pollSerial();
 // Util
 // ------------------------------------------------------------------
 void feedGPS() {
-  while (gpsSerial.available()) gps.encode(gpsSerial.read());
+  gps_sensor::update();
 }
 
 static void bantuan() {
   Serial.println();
   Serial.println("Perintah:");
-  Serial.println("  n=status jaringan | m=publish heartbeat");
+  Serial.println("  n=status jaringan+sensor | m=publish telemetri | t=payload");
 #if ENABLE_SERIAL_TEST_MENU
   Serial.println("  a=semua | 1=LCD | 2=buzzer | 3=relay | 4=MPU | 5=GPS | 6=SIM | 7=SMS");
   Serial.println("  s=scan I2C | h=bantuan | AT...=langsung ke SIM800L");
@@ -99,6 +111,27 @@ static void printNetworkStatus() {
                 (unsigned long)s.publishFailures,
                 (unsigned long)s.commandCount,
                 (unsigned long)millis());
+
+  Serial.printf("[SENSOR] GPS fix=%s sat=%d lat/lng=%s\n",
+                gps_sensor::hasFix() ? "ya" : "tidak",
+                gps_sensor::getSats(),
+                gps_sensor::hasFix() ? "tersedia" : "null");
+  if (gps_sensor::hasFix()) {
+    Serial.printf("[SENSOR]   lat=%.6f lng=%.6f speed=%.1f km/jam\n",
+                  gps_sensor::getLat(),
+                  gps_sensor::getLng(),
+                  gps_sensor::getSpeed());
+  }
+  Serial.printf("[SENSOR] IMU siap=%s mpu_motion=%s\n",
+                imu_sensor::healthy() ? "ya" : "tidak",
+                imu_sensor::motion() ? "true" : "false");
+
+  float batteryPercent = 0.0f;
+  if (battery_sensor::read(batteryPercent)) {
+    Serial.printf("[SENSOR] Baterai=%.0f%%\n", (double)batteryPercent);
+  } else {
+    Serial.println("[SENSOR] Baterai=N/A (sensor belum terpasang)");
+  }
 }
 
 static void handleLine(const char *line) {
@@ -112,7 +145,8 @@ static void handleLine(const char *line) {
 
   switch (line[0]) {
     case 'n': printNetworkStatus(); break;
-    case 'm': mqtt_link::publishHeartbeat(true); break;
+    case 'm': telemetry::publishNow(); break;
+    case 't': telemetry::printPayload(); break;
 #if ENABLE_SERIAL_TEST_MENU
     case 'a': self_test::tesSemua(); break;
     case '1': self_test::tesLCD(); break;
@@ -168,6 +202,11 @@ void setup() {
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
   sim.begin(SIM_BAUD, SERIAL_8N1, SIM_RX_PIN, SIM_TX_PIN);
 
+  gps_sensor::begin();
+  imu_sensor::begin();
+  battery_sensor::begin();
+  telemetry::begin();
+
 #if ENABLE_SERIAL_TEST_MENU
   bantuan();
 #endif
@@ -177,7 +216,9 @@ void setup() {
 
 void loop() {
   feedGPS();
+  imu_sensor::update();
   mqtt_link::loop();
+  telemetry::loop();
   pollSerial();
 
   // Balasan AT manual / SIM800L diteruskan ke Serial.

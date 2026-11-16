@@ -16,6 +16,7 @@
 
 #include "config.h"
 #include "self_test.h"
+#include "imu_sensor.h"
 
 // Objek hardware dimiliki oleh sketch_nov16a.ino.
 extern LiquidCrystal_I2C lcd;
@@ -43,37 +44,6 @@ void beep(int ms) {
     delayMicroseconds(250);
   }
   digitalWrite(BUZZER_PIN, LOW);
-}
-
-bool mpuInit() {
-  Wire.beginTransmission(MPU_ADDR);
-  Wire.write(0x6B); // PWR_MGMT_1
-  Wire.write(0x00); // bangunkan sensor
-  return Wire.endTransmission() == 0;
-}
-
-bool mpuRead(float &ax, float &ay, float &az,
-             float &gx, float &gy, float &gz, float &temp) {
-  Wire.beginTransmission(MPU_ADDR);
-  Wire.write(0x3B);
-  if (Wire.endTransmission(false) != 0) return false;
-  if (Wire.requestFrom((uint8_t)MPU_ADDR, (uint8_t)14) != 14) return false;
-
-  int16_t v[7];
-  for (int i = 0; i < 7; i++) {
-    uint8_t hi = Wire.read();
-    uint8_t lo = Wire.read();
-    v[i] = (hi << 8) | lo;
-  }
-
-  ax = v[0] / 16384.0;
-  ay = v[1] / 16384.0;
-  az = v[2] / 16384.0;
-  temp = v[3] / 340.0 + 36.53;
-  gx = v[4] / 131.0;
-  gy = v[5] / 131.0;
-  gz = v[6] / 131.0;
-  return true;
 }
 
 String kirimAT(const String &cmd, uint32_t timeout = 2000) {
@@ -140,16 +110,16 @@ bool tesMPU() {
     Serial.println("  GAGAL: MPU6050 tidak terdeteksi (cek wiring/alamat)");
     return false;
   }
-  if (!mpuInit()) {
+  if (!imu_sensor::begin()) {
     Serial.println("  GAGAL: inisialisasi");
     return false;
   }
 
   for (int i = 0; i < 5; i++) {
-    float ax, ay, az, gx, gy, gz, t;
-    if (mpuRead(ax, ay, az, gx, gy, gz, t)) {
+    imu_sensor::Sample s;
+    if (imu_sensor::readSample(s)) {
       Serial.printf("  Acc[g] %.2f %.2f %.2f | Gyro[d/s] %.1f %.1f %.1f | Suhu %.1f C\n",
-                    ax, ay, az, gx, gy, gz, t);
+                    s.ax, s.ay, s.az, s.gx, s.gy, s.gz, s.tempC);
     } else {
       Serial.println("  GAGAL baca data");
       return false;
@@ -157,7 +127,9 @@ bool tesMPU() {
     delay(500);
   }
 
-  Serial.println("  OK. Goyangkan sensor, nilai harus berubah (diam datar: az ~1.0).");
+  Serial.printf("  OK. Status motion classifier: %s\n",
+                imu_sensor::motion() ? "GERAK" : "DIAM");
+  Serial.println("  Goyangkan sensor, nilai harus berubah (diam datar: az ~1.0).");
   return true;
 }
 

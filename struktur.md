@@ -41,18 +41,18 @@ Trabass-IoT-Firmware/
 │     ├─ sketch_nov16a_baseline.ino       # salinan persis kode tes existing [BARU M1]
 │     └─ README.md                        # SHA-256 + aturan restore [BARU M1]
 └─ sketch_nov16a/                         # folder sketch yang dibuka Arduino IDE
-   ├─ sketch_nov16a.ino                   # orkestrasi setup()/loop() + menu serial [SELESAI M2]
+   ├─ sketch_nov16a.ino                   # orkestrasi setup()/loop() + menu serial [SELESAI M3]
    ├─ config.example.h                    # template default semua konfigurasi [SELESAI M1]
    ├─ config.h                            # override lokal user [SELESAI M1]
    ├─ app_types.h                         # enum LinkState + struct LinkStats [SELESAI M2]
-   ├─ gps_sensor.h / .cpp                 # parsing NMEA non-blocking [M3]
-   ├─ imu_sensor.h / .cpp                 # sampling + klasifikasi mpu_motion [M3]
-   ├─ battery_sensor.h / .cpp             # stub, ENABLE_BATTERY_SENSOR [M3]
-   ├─ outputs.h / .cpp                    # relay, buzzer, LCD [M3–M4]
-   ├─ mqtt_link.h / .cpp                  # WiFi, MQTT, reconnect, heartbeat, antrean command [SELESAI M2]
+   ├─ gps_sensor.h / .cpp                 # parsing NMEA non-blocking [SELESAI M3]
+   ├─ imu_sensor.h / .cpp                 # sampling + klasifikasi mpu_motion [SELESAI M3]
+   ├─ battery_sensor.h / .cpp             # stub, ENABLE_BATTERY_SENSOR [SELESAI M3]
+   ├─ outputs.h / .cpp                    # relay, buzzer, LCD [BELUM — M4]
+   ├─ mqtt_link.h / .cpp                  # WiFi, MQTT, reconnect, publish telemetri, antrean command [SELESAI M3]
    ├─ command_handler.h / .cpp            # dispatch command [M4]
    ├─ sms_service.h / .cpp                # antrean AT command SIM800L [M5]
-   ├─ telemetry.h / .cpp                  # builder + publish periodik [M3]
+   ├─ telemetry.h / .cpp                  # builder + publish periodik [SELESAI M3]
    └─ self_test.h / .cpp                  # menu tes baseline dipindah ke sini [SELESAI M2]
 ```
 
@@ -62,15 +62,15 @@ Trabass-IoT-Firmware/
 
 | File | Tanggung jawab | Milestone |
 |---|---|---|
-| `sketch_nov16a.ino` | Hanya `setup()`/`loop()` orchestration; tanpa logika sensor | M2 |
+| `sketch_nov16a.ino` | Hanya `setup()`/`loop()` orchestration; tanpa logika sensor | M2–M3 |
 | `config.example.h` | Semua default: pin, baud, WiFi placeholder, MQTT, threshold, feature flag | M1 |
 | `config.h` | Nilai lokal (kredensial, IP, override); include template paling akhir | M1 |
 | `app_types.h` | `LinkState` (Offline/WifiConnecting/WifiConnected/MqttConnected) + `LinkStats`; tipe bersama tanpa definisi variabel | M2 |
-| `gps_sensor.*` | `gpsUpdate()`, `getLat()/getLng()/getSpeed()/getSats()/hasFix()` | M3 |
-| `imu_sensor.*` | `imuUpdate()`, `getMotion()` → bool | M3 |
-| `battery_sensor.*` | `batteryRead()` → `bool` + `float percent`; saat ini selalu false | M3 (stub) |
-| `outputs.*` | `setLock(bool)`, `setBuzzerPattern()`, `lcdShow()` — non-blocking | M3–M4 |
-| `mqtt_link.*` | `begin()`, `loop()`, `publishHeartbeat()`, `takeCommand()`, `stateLabel()`, `stats()` | M2 |
+| `gps_sensor.*` | `begin()`, `update()`, `hasFix()`, `getLat()/getLng()/getSpeed()/getSats()`, freshness `GPS_FIX_MAX_AGE_MS` | M3 |
+| `imu_sensor.*` | `begin()`, `update()`, `motion()`, `readSample()`, retry | M3 |
+| `battery_sensor.*` | `begin()`, `read(percent)`; saat ini selalu `false` (`ENABLE_BATTERY_SENSOR 0`) | M3 (stub) |
+| `outputs.*` | `setLock(bool)`, `setBuzzerPattern()`, `lcdShow()` — non-blocking | M4 |
+| `mqtt_link.*` | `begin()`, `loop()`, `publishTelemetry()`, `takeConnectEvent()`, `takeCommand()`, `stateLabel()`, `stats()` | M2–M3 |
 | `command_handler.*` | Parse JSON, validasi action, dispatch, idempotensi | M4 |
 | `sms_service.*` | `queueSms()`, `smsLoop()` state machine AT | M5 |
 | `telemetry.*` | Susun payload, kirim tiap interval, publish on reconnect | M3 |
@@ -149,6 +149,8 @@ Trabass-IoT-Backend/
 | `src/config/mqtt.js` | Opsional subscribe `bike/ack/+` | M7 (opsional) | Bukti eksekusi command |
 
 > File backend lain **tidak diubah** tanpa justifikasi teknis dan persetujuan user.
+
+**Status patch M3:** ketiga file sudah diterapkan dan diuji (`node --check` exit 0). Detail perilaku ada di `konteks.md` bagian 6 dan hasil uji di `perencanaan.md`.
 
 ---
 
@@ -229,13 +231,30 @@ Trabass-IoT-Frontend/
 - [x] Upload ke COM14
 - [x] Bukti heartbeat, command reception, boot aman, menu regresi
 - [x] Uji reconnect WiFi (T03) dan jalur reconnect broker (T04 PARTIAL)
-- [ ] Konfirmasi user sebelum masuk M3
+- [x] Konfirmasi user sebelum masuk M3
+
+### 6.3 M3 — telemetri dan patch no-fix
+
+- [x] `gps_sensor.h` / `.cpp` (non-blocking, freshness fix)
+- [x] `imu_sensor.h` / `.cpp` (sampling 100 ms, hold/idle, retry)
+- [x] `battery_sensor.h` / `.cpp` (stub)
+- [x] `telemetry.h` / `.cpp` (payload fix/no-fix, publish periodik + on connect)
+- [x] `mqtt_link` diganti dari heartbeat ke `publishTelemetry()` + `takeConnectEvent()`
+- [x] `self_test::tesMPU()` memakai `imu_sensor`
+- [x] Menu serial `n` (jaringan+sensor), `m` (publish), `t` (payload)
+- [x] `config.example.h`: `GPS_FIX_MAX_AGE_MS`, `TELEMETRY_JSON_BUFFER`, log payload, retry IMU
+- [x] Patch backend: `telemetryController.js`, `timerService.js`, `paymentController.js`
+- [x] Kompilasi produksi exit 0 (939.744 B/71%, RAM 49.824 B/15%)
+- [x] Upload produksi ke COM14, hash verified
+- [x] Bukti fix, no-fix, Redis, MySQL, dashboard, TAMPER
+- [ ] Keputusan user: koreksi `STATION_LAT/LNG` atau terima status `GEOFENCE_VIOLATION`
+- [ ] Konfirmasi user sebelum masuk M4
 
 ---
 
 ## 7. Catatan penting
 
 - Sejak M2, `sketch_nov16a.ino` **sudah diubah** menjadi orkestrasi; fungsi tes baseline dipindah ke `self_test.*` tanpa mengubah perilakunya.
-- Modul M3–M5 yang ditandai milestone tersebut **belum dibuat**; daftarnya adalah kontrak struktur, bukan klaim implementasi.
+- Modul M3 (`gps_sensor`, `imu_sensor`, `battery_sensor`, `telemetry`) **sudah dibuat dan diuji**; `outputs.*` serta `command_handler.*` baru dibuat di M4.
 - Port COM14 eksklusif: tutup Serial Monitor Arduino IDE sebelum `arduino-cli upload`.
 - Jangan memindahkan `baseline/` ke dalam `sketch_nov16a/` karena Arduino IDE akan mengompilasi dua sketch `.ino`.

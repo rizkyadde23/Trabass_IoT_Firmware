@@ -246,7 +246,7 @@ Jika PWA dibuka dari HP: set `VITE_API_URL` ke IP LAN PC dan jalankan Vite denga
 
 > **Batasan PubSubClient v2.8:** library hanya mengirim publish QoS 0. Backend tetap subscribe dengan QoS 0 sehingga tidak ada negosiasi turun yang menggagalkan pengiriman. Untuk LAN lokal ini diterima; QoS 1 end-to-end butuh library/MQTT client lain.
 
-**Heartbeat M2 (payload sementara sebelum telemetri M3):**
+**Heartbeat M2 (historis; tidak dipakai lagi sejak M3):**
 
 ```json
 {
@@ -259,7 +259,7 @@ Jika PWA dibuka dari HP: set `VITE_API_URL` ke IP LAN PC dan jalankan Vite denga
 }
 ```
 
-Payload ini tidak memiliki `lat/lng`, sehingga backend saat ini mengabaikannya (lihat patch no-fix M3). Bukti M2 diambil dari `mosquitto_sub` dan Serial, bukan dashboard.
+Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Sejak M3 firmware mengirim payload telemetri penuh di topic yang sama; field `type`, `bike_id`, dan `wifi_rssi` tidak lagi dikirim. Bukti M2 diambil dari `mosquitto_sub` dan Serial, bukan dashboard.
 
 **Dengan fix:**
 
@@ -304,6 +304,16 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend saat ini mengabaikannya (
 | `uptime_ms` | integer | `millis()` | Diagnostik |
 | `fw_version` | string | config | Diagnostik |
 | `battery` | — | ditunda | **Tidak dikirim** |
+
+**Catatan implementasi M3 (firmware + backend):**
+
+- Payload fix terukur 156–157 B; `TELEMETRY_JSON_BUFFER=320` menyisakan ruang.
+- Tanpa fix, backend **tetap** memproses paket: `speed`, `lock_state`, `mpu_motion`, `battery` (jika ada), dan `updated_at` ditulis ke Redis.
+- `lat`/`lng` lama di Redis dihapus dengan `hDel(key, ["lat", "lng"])` (node-redis v4 menerima array field). Marker peta hilang; koordinat terakhir tetap tersimpan di MySQL `bikes` sebagai arsip.
+- `telemetry_logs` hanya di-insert saat fix karena `latitude`/`longitude` bertipe `NOT NULL`.
+- Geofence hanya dievaluasi saat fix; insiden GEOFENCE tidak ditutup hanya karena paket tanpa koordinat.
+- `timerService` dan `paymentController` hanya mengubah `lock_state` pada hash Redis yang sudah memiliki `updated_at`; keduanya tidak memalsukan timestamp telemetri.
+- Tanpa fix, `UPDATE bikes` hanya menyentuh `lock_state`/`battery_percent`, tidak menimpa `last_latitude`/`last_longitude`.
 
 ---
 
@@ -359,6 +369,10 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend saat ini mengabaikannya (
 - **Publish firmware QoS 0** (batasan PubSubClient), subscribe QoS 1.
 - **LWT belum diaktifkan** sampai M2 diterima; deteksi offline memakai stale 30 detik di frontend.
 - Saat AP hilang, log ESP-IDF dapat mencetak `E wifi:sta is connecting, return error` karena `WiFi.reconnect()` dipanggil ketika stack masih connecting. Ini kosmetik; firmware tetap retry dan pulih (dibuktikan T03).
+- **Uji no-fix M3** memakai build override `-DGPS_FIX_MAX_AGE_MS=1`; firmware produksi tetap 5000 ms dan sudah di-upload ulang.
+- **Uji jalur IMU M3** memakai override threshold `0.001 g` / `9999 dps`. Threshold produksi `0.35 g` / `40 dps` belum diverifikasi dengan gerakan fisik.
+- **GPS ruang uji** `-7.78243,110.41583` berada ~3,49 km dari pangkalan `-7.773512,110.385411` (radius 500 m), sehingga status dashboard menjadi `GEOFENCE_VIOLATION`. Config pangkalan belum diubah.
+- **Resolusi TAMPER otomatis** (`TAMPER_ALERT_RESET_SECONDS=120`) hanya dieksekusi pada jalur kondisi normal. Selama geofence masih violated, `handleTelemetry` return lebih awal sehingga insiden TAMPER tetap `ACTIVE` sampai ada payload unlock. Perilaku ini sudah ada sebelum patch M3.
 
 ### 8.3 Yang harus diisi user di `config.h`
 

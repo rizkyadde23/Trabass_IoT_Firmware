@@ -188,6 +188,26 @@ flowchart TD
 
 **Kriteria selesai:** 10/10 payload valid; dashboard update ≤ 10 detik; tanpa fix tetap ada data IMU/lock; tidak ada error SQL `NOT NULL`.
 
+**Status M3:** implementasi selesai dan diuji. Firmware produksi `1.0.0-m3` terpasang terakhir di COM14; backend lokal berjalan dengan `npm.cmd run dev` (nodemon). Telemetri fix, no-fix, Redis, MySQL, dan dashboard terbukti; dua uji memakai instrumentasi karena threshold gerak dan koordinat ruang uji tidak memungkinkan reproduksi kondisi normal.
+
+**Bukti utama:**
+
+- `m3_compile_final.log`: exit 0, 939.744 B (71%), RAM 49.824 B (15%).
+- `m3_upload_final.log`: hash verified, COM14.
+- `m3_final_mqtt.log`: payload fix 156–157 B, 18–22 satelit, interval ~5 dtk.
+- `m3_nofix.log`: payload firmware `lat/lng:null`; `telemetry_logs` 116→116; koordinat `bikes` tidak berubah; Redis `HEXISTS lat/lng=0`; recovery `=1`.
+- `m3_tamper.log`, `m3_unlocked.log`: TAMPER id 9 dan 10, alert `notified=true`.
+- `m3_backend.log`/`m3_backend.err.log`: tidak ada `[TELEMETRY ERROR]` atau `NOT NULL`.
+- Dashboard API: `has_live_location=true`, `lock_state=true`, `mpu_motion=false`, `battery_percent=null`.
+
+**Keterbatasan yang dicatat:**
+
+- T08/T23 memakai build override `-DIMU_MOTION_ACCEL_THRESHOLD_G=0.001f -DIMU_MOTION_GYRO_THRESHOLD_DPS=9999.0f`. Gerakan fisik dengan threshold produksi (0.35 g / 40 dps) belum diuji.
+- T09 memakai payload synthetic `lock_state:false,mpu_motion:true` tanpa koordinat, bukan gerakan fisik.
+- Resolusi TAMPER otomatis setelah 120 dtk **tidak berjalan selama geofence masih violated** karena `handleTelemetry` sudah `return` di blok alert. Insiden 10 ditutup lewat payload unlock (19:02:08). Ini perilaku backend lama, bukan regresi patch M3; perlu keputusan user bila ingin diperbaiki.
+- GPS ruang uji `-7.78243,110.41583` berjarak ~3,49 km dari `STATION_LAT=-7.773512`, `STATION_LNG=110.385411`, radius 500 m. Semua telemetri fix memicu `GEOFENCE_VIOLATION`. Konfigurasi pangkalan **tidak diubah**; menunggu keputusan user.
+- Baterai `DEFERRED` (hardware belum ada); SMS T19 `BLOCKED` (SIM800L belum membalas `AT`).
+
 ---
 
 ### M4 — Command downlink dan aktuator
@@ -299,17 +319,17 @@ Aturan pengisian:
 
 | ID | Tujuan | Langkah | Input | Expected | Actual | Status |
 |---|---|---|---|---|---|---|
-| T01 | Boot aman | Nyalakan device | `config.h` terisi | Relay OFF, buzzer LOW, log boot | `POWERON_RESET`; `[BOOT] fw=1.0.0-m2`; `Relay=OFF (terkunci), buzzer=LOW` | PASS |
+| T01 | Boot aman | Nyalakan device | `config.h` terisi | Relay OFF, buzzer LOW, log boot | M2: `POWERON_RESET`; `[BOOT] fw=1.0.0-m2`; `Relay=OFF (terkunci), buzzer=LOW`. M3: `[BOOT] fw=1.0.0-m3 bike=BK-001`, relay tetap OFF | PASS |
 | T02 | WiFi/MQTT connect | Hubungkan AP + broker | SSID benar | Terhubung < 15 dtk | WiFi 1,09 dtk; MQTT 1,88 dtk; RSSI -57 dBm | PASS |
 | T03 | Reconnect WiFi | Matikan AP lalu hidupkan | Gangguan 30 dtk | Pulih otomatis | Hotspot off ±30 dtk: WiFi putus t=3,6 dtk; retry tiap 10 dtk; pulih t=34,6 dtk; MQTT t=39,6 dtk; jeda heartbeat 38,3 dtk | PASS |
 | T04 | Reconnect broker | Restart Mosquitto | Restart service | Subscribe ulang | Jalur reconnect terbukti (WiFi putus → MQTT connect ulang → command `{"action":"LOCK"}` 17 B diterima). Restart service saja belum dilakukan | PARTIAL |
-| T05 | Telemetri GPS fix | Bawa outdoor | Fix ≥ 3 satelit | Redis + MySQL terisi | — | NOT RUN |
-| T06 | Telemetri tanpa fix | Demo indoor | `gps_fix=false` | IMU/lock tetap update, tidak error SQL | — | NOT RUN |
+| T05 | Telemetri GPS fix | Bawa outdoor | Fix ≥ 3 satelit | Redis + MySQL terisi | Payload 156 B, 18–22 satelit (`-7.782435,110.415817`); Redis: lat/lng/speed/lock/mpu/`updated_at`; MySQL `telemetry_logs` + `bikes`; dashboard `has_live_location=true` | PASS |
+| T06 | Telemetri tanpa fix | Demo indoor | `gps_fix=false` | IMU/lock tetap update, tidak error SQL | Build `-DGPS_FIX_MAX_AGE_MS=1`: payload `lat/lng:null,gps_fix:false,satellites:0`; log 116→116; koordinat `bikes` tetap; Redis lat/lng terhapus, speed/lock/mpu/`updated_at` ada; fix pulih → lat/lng kembali; tanpa error SQL | PASS (instrumented) |
 | T07 | Akurasi baterai | Bandingkan multimeter | Divider terpasang | Error ≤ 5% | — | DEFERRED |
-| T08 | IMU saat locked | Goyang saat terkunci | Gerakan > threshold | `mpu_motion=true`, insiden TAMPER | — | NOT RUN |
-| T09 | IMU saat unlocked | Goyang saat terbuka | Gerakan > threshold | `mpu_motion=true`, bukan TAMPER | — | NOT RUN |
-| T10 | Redis live hash | Kirim telemetri | Payload valid | Field lengkap + `updated_at` | — | NOT RUN |
-| T11 | MySQL log | Kirim telemetri dengan fix | Payload valid | Baris `telemetry_logs` bertambah | — | NOT RUN |
+| T08 | IMU saat locked | Goyang saat terkunci | Gerakan > threshold | `mpu_motion=true`, insiden TAMPER | Build override threshold `0.001 g`/`9999 dps`: telemetri `mpu_motion=true`; TAMPER id 10 ACTIVE, `bikes.status=TAMPER_ALERT`, alert `notified=true`; ditutup 19:02:08 via payload unlock. Threshold produksi belum diuji gerak fisik | PARTIAL |
+| T09 | IMU saat unlocked | Goyang saat terbuka | Gerakan > threshold | `mpu_motion=true`, bukan TAMPER | Payload synthetic `lock_state:false,mpu_motion:true`: TAMPER id 9 RESOLVED, tidak ada TAMPER baru; status akhir `GEOFENCE_VIOLATION` | PARTIAL (synthetic) |
+| T10 | Redis live hash | Kirim telemetri | Payload valid | Field lengkap + `updated_at` | `HGETALL`: `lat=-7.782448`, `lng=110.415797`, `speed=0`, `lock_state=true`, `mpu_motion=false`, `updated_at` terisi | PASS |
+| T11 | MySQL log | Kirim telemetri dengan fix | Payload valid | Baris `telemetry_logs` bertambah | 85→87 dalam 12 dtk; baris berurutan tiap 5 dtk (contoh log 97–99, 18:41:12–18:41:22) | PASS |
 | T12 | `UNLOCK` | Command MQTT/admin | Action UNLOCK | Relay ON, LCD TERBUKA | — | NOT RUN |
 | T13 | `LOCK` | Command MQTT/admin | Action LOCK | Relay OFF, LCD TERKUNCI | — | NOT RUN |
 | T14 | `ALARM_ON` | Command | Action ALARM_ON | Buzzer nyala | — | NOT RUN |
@@ -321,11 +341,11 @@ Aturan pengisian:
 | T20 | Payment E2E | Midtrans sandbox | Settlement | Unlock otomatis | — | NOT RUN |
 | T21 | Timer expiry | Tunggu sewa habis | Sesi aktif | Lock + alarm + insiden | — | NOT RUN |
 | T22 | Geofence | Pindah koordinat | Di luar 500 m | Insiden + alarm | — | NOT RUN |
-| T23 | Tamper | Gerak saat locked | `mpu_motion=true` | Insiden + notifikasi | — | NOT RUN |
+| T23 | Tamper | Gerak saat locked | `mpu_motion=true` | Insiden + notifikasi | TAMPER id 10 dibuat; alert Redis `active=true`, `notified=true`, `notify_error` kosong; WhatsApp terkirim. Lihat keterbatasan T08 | PARTIAL |
 | T24 | Duplicate command | Kirim 2× QoS 1 | Action sama | Tidak ada efek ganda | — | NOT RUN |
 | T25 | Backend restart | Restart Node | Service restart | Data tetap konsisten | — | NOT RUN |
 | T26 | Low battery | Baterai ≤ 20% | Hardware tersedia | `battery_low=true` | — | DEFERRED |
-| T27 | Reboot saat sewa | Reset ESP32 | Sesi aktif | Default terkunci + terdokumentasi | Reboot → `lock_state=true`; sesi sewa belum ada di M2 | PARTIAL |
+| T27 | Reboot saat sewa | Reset ESP32 | Sesi aktif | Default terkunci + terdokumentasi | Reboot M3 → telemetri `lock_state=true`; sesi sewa belum ada | PARTIAL |
 | T28 | Heartbeat periodik (M2) | Boot normal, amati `mosquitto_sub` | `bike/telemetry/#` | Interval 5 dtk, payload valid | 8 heartbeat berurutan 5,0 dtk; `fw_version=1.0.0-m2`; RSSI -50…-60; `lock_state=true` | PASS |
 | T29 | Command diterima (M2) | Publish ke `bike/command/BK-001` | `{"action":"UNLOCK"}`, lalu `{"action":"LOCK"}` via `-f` | Callback mencatat, aktuator belum bergerak | `[MQTT] Command masuk 15 B`; `[CMD] Diterima: {action:UNLOCK}`; setelah reconnect: `17 B` + `{"action":"LOCK"}` (JSON valid) | PASS |
 

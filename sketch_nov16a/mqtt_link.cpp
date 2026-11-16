@@ -28,11 +28,12 @@ LinkState gState = LinkState::Offline;
 
 bool gWifiWasConnected = false;
 bool gMqttWasConnected = false;
-bool gPublishOnConnect = false;
+bool gConnectEvent = false;
 
 uint32_t gWifiRetryAtMs = 0;
 uint32_t gLastMqttAttemptMs = 0;
 uint32_t gLastPublishMs = 0;
+bool gHasPublished = false;
 
 char gCmdQueue[kCmdQueueSize][kCmdSlotSize];
 size_t gCmdHead = 0;
@@ -124,7 +125,7 @@ void ensureMqtt() {
       gMqttWasConnected = true;
       gStats.mqttConnects++;
       gState = LinkState::MqttConnected;
-      gPublishOnConnect = true;
+      gConnectEvent = true;
       Serial.printf("[MQTT] Terhubung ke %s:%d, subscribe %s\n",
                     MQTT_BROKER_HOST,
                     MQTT_BROKER_PORT,
@@ -163,7 +164,7 @@ void ensureMqtt() {
     gMqttWasConnected = true;
     gStats.mqttConnects++;
     gState = LinkState::MqttConnected;
-    gPublishOnConnect = true;
+    gConnectEvent = true;
 
     if (!mqtt.subscribe(MQTT_TOPIC_COMMAND, MQTT_SUBSCRIBE_QOS)) {
       Serial.println("[MQTT] PERINGATAN: subscribe command gagal.");
@@ -180,48 +181,43 @@ void ensureMqtt() {
   }
 }
 
-void buildAndPublishHeartbeat(bool force) {
+bool publishTelemetryInternal(const char *payload, bool force) {
+  if (payload == nullptr || payload[0] == '\0') {
+    return false;
+  }
   if (!mqtt.connected()) {
-    return;
+    return false;
   }
 
   uint32_t now = millis();
-  if (!force && (now - gLastPublishMs) < TELEMETRY_INTERVAL_MS) {
-    return;
+  if (!force && gHasPublished &&
+      (now - gLastPublishMs) < (uint32_t)TELEMETRY_INTERVAL_MS) {
+    return false;
   }
 
-  // lock_state diturunkan dari pin relay agar selalu sinkron dengan
-  // kondisi fisik, termasuk setelah menu tes '3'.
-  const bool locked = (digitalRead(RELAY_PIN) == RELAY_OFF);
-
-  char payload[256];
-  int length = snprintf(
-      payload,
-      sizeof(payload),
-      "{\"type\":\"heartbeat\",\"fw_version\":\"%s\",\"bike_id\":\"%s\","
-      "\"uptime_ms\":%lu,\"wifi_rssi\":%d,\"lock_state\":%s}",
-      FW_VERSION,
-      BIKE_ID,
-      (unsigned long)now,
-      (int)WiFi.RSSI(),
-      locked ? "true" : "false");
-
-  if (length <= 0 || (size_t)length >= sizeof(payload)) {
-    Serial.println("[MQTT] Heartbeat tidak dikirim: payload terpotong.");
-    return;
+  const size_t length = strlen(payload);
+  if (length >= MQTT_BUFFER_SIZE) {
+    Serial.printf("[MQTT] Payload %u B melebihi buffer %d B.\n",
+                  (unsigned)length,
+                  MQTT_BUFFER_SIZE);
+    return false;
   }
 
   if (mqtt.publish(MQTT_TOPIC_TELEMETRY, payload)) {
     gStats.publishCount++;
+    gStats.lastPublishMs = now;
     gLastPublishMs = now;
-  } else {
-    gStats.publishFailures++;
-    if ((gStats.publishFailures % 10) == 1) {
-      Serial.printf("[MQTT] Publish gagal (total=%lu). Buffer=%d B\n",
-                    (unsigned long)gStats.publishFailures,
-                    MQTT_BUFFER_SIZE);
-    }
+    gHasPublished = true;
+    return true;
   }
+
+  gStats.publishFailures++;
+  if ((gStats.publishFailures % 10) == 1) {
+    Serial.printf("[MQTT] Publish gagal (total=%lu). Buffer=%d B\n",
+                  (unsigned long)gStats.publishFailures,
+                  MQTT_BUFFER_SIZE);
+  }
+  return false;
 }
 
 } // namespace
@@ -258,18 +254,11 @@ void loop() {
     mqtt.loop();
   }
 
-  // M2: command hanya dicatat. M4 akan melakukan dispatch.
+  // M2/M3: command hanya dicatat. M4 akan melakukan dispatch.
   char command[kCmdSlotSize];
   while (takeCommand(command, sizeof(command))) {
     Serial.printf("[CMD] Diterima: %s\n", command);
   }
-
-  if (gPublishOnConnect) {
-    gPublishOnConnect = false;
-    buildAndPublishHeartbeat(true);
-  }
-
-  buildAndPublishHeartbeat(false);
 }
 
 bool wifiConnected() {
@@ -309,8 +298,14 @@ int32_t rssi() {
   return WiFi.RSSI();
 }
 
-void publishHeartbeat(bool force) {
-  buildAndPublishHeartbeat(force);
+bool publishTelemetry(const char *payload, bool force) {
+  return publishTelemetryInternal(payload, force);
+}
+
+bool takeConnectEvent() {
+  const bool event = gConnectEvent;
+  gConnectEvent = false;
+  return event;
 }
 
 bool takeCommand(char *out, size_t outSize) {
