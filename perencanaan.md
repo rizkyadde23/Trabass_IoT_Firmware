@@ -27,7 +27,7 @@ Dokumen pendamping:
 
 | No | Prinsip | Konsekuensi teknis |
 |---|---|---|
-| P1 | Jalankan di PC lokal dulu | MQTT ke `10.3.24.125:1883`, bukan cloud |
+| P1 | Jalankan di PC lokal dulu | MQTT ke `10.20.226.246:1883`, bukan cloud |
 | P2 | Jangan merombak yang sudah jalan | Schema DB, endpoint, dan hardware test existing dipertahankan |
 | P3 | Perubahan kecil dan terisolasi | Patch backend no-GPS-fix hanya di `telemetryController.js` |
 | P4 | Inkremental per milestone | Tidak ada kode M3 sebelum M2 diterima user |
@@ -113,7 +113,7 @@ flowchart TD
 2. Instal library: TinyGPSPlus `v1.0.3a`, PubSubClient `v2.8`, ArduinoJson `v7.4.3`.
 3. Verifikasi board ESP32 (paket `esp32` 3.3.12) dan library existing `LiquidCrystal_I2C`.
 4. Verifikasi `GET /health` backend dan port yang listen.
-5. Verifikasi IP LAN `10.3.24.125` untuk port 1883 dan 3000.
+5. Verifikasi IP LAN (M1: `10.3.24.125`, M2 hotspot: `10.20.226.246`) untuk port 1883 dan 3000.
 6. Verifikasi firewall inbound Node.js dan mosquitto.
 7. Tulis kontrak telemetri, wiring, dan checklist baseline ke `konteks.md`.
 8. Tulis struktur folder ke `struktur.md`.
@@ -124,13 +124,13 @@ flowchart TD
 - [x] Ketiga library terinstal di sketchbook library
 - [x] `/health` sukses, MySQL/Redis/MQTT OK
 - [x] Port 1883/3000/3306/6379 listen dan firewall mengizinkan
-- [x] `10.3.24.125:1883` dan `:3000` reachable dari PC
+- [x] `10.20.226.246:1883` dan `:3000` reachable dari PC (M1 sempat `10.3.24.125`)
 - [x] `config.example.h` + `config.h` terbentuk
 - [x] Tiga dokumen perencanaan/konteks/struktur terbentuk
-- [ ] User mengisi `WIFI_SSID`, `WIFI_PASSWORD`, `MQTT_BROKER_HOST` di `config.h`
-- [ ] User menjalankan menu tes baseline `a`, `1`–`7`, `s` dan melaporkan hasilnya
+- [x] User mengisi `WIFI_SSID`, `WIFI_PASSWORD`, `MQTT_BROKER_HOST` di `config.h` (diverifikasi M2: ESP32 connect)
+- [x] User menjalankan menu tes baseline `a`, `1`–`7`, `s` (dilaporkan berhasil; agent memverifikasi ulang `1`–`6`, `s`, `h` pada M2)
 
-**Status M1:** dokumentasi dan verifikasi lingkungan selesai; menunggu pengisian kredensial + hasil tes hardware dari user.
+**Status M1:** dokumentasi dan verifikasi lingkungan selesai; kredensial sudah diisi dan konektivitas terbukti pada M2 (WiFi + MQTT).
 
 ---
 
@@ -152,6 +152,20 @@ flowchart TD
 **Pengujian:** B02–B04, T02–T04, T25.
 
 **Kriteria selesai:** reconnect < 15 detik, tidak ada watchdog reset, heartbeat terlihat di `mosquitto_sub`, menu tes serial masih bisa dipakai.
+
+**Hasil M2 (2026-11-16):**
+
+- Kompilasi `arduino-cli` exit 0; 936.060 byte flash (71%), RAM global 49.776 byte (15%). Tidak ada error/warning pada kode sketch (hanya peringatan deprecated library `LiquidCrystal_I2C`).
+- Boot: `POWERON_RESET` → `[BOOT] Trabass fw=1.0.0-m2 bike=BK-001` → relay OFF / buzzer LOW.
+- WiFi connect **1,09 dtk**, MQTT connect **1,88 dtk** (target < 15 dtk).
+- Heartbeat tiap 5 dtk: `type=heartbeat`, `fw_version=1.0.0-m2`, RSSI -50…-60 dBm, `lock_state=true`.
+- Command `bike/command/BK-001` diterima callback dan masuk antrean: `[MQTT] Command masuk 15 B`, `[CMD] Diterima`.
+- Menu regresi: `n`, `m`, `h`, `s` OK; `1` LCD OK, `2` buzzer jalan, `3` relay ON→OFF (state akhir terkunci), `4` MPU OK, `5` GPS FIX 21 satelit, `6` SIM800L **tidak membalas**.
+- Reconnect terbukti (2026-11-16): hotspot dimatikan ±30 dtk → `[WIFI] Koneksi terputus`, retry tiap 10 dtk, WiFi pulih ±1 dtk setelah hotspot tersedia, MQTT connect 5 dtk kemudian, heartbeat publish-on-connect muncul (jeda heartbeat 38,3 dtk). Command JSON valid diterima setelah reconnect → subscribe terpasang ulang.
+- Catatan kosmetik: ESP-IDF mencetak `E wifi:sta is connecting, return error` saat `WiFi.reconnect()` dipanggil ketika stack masih connecting; koneksi tetap berhasil. Tidak mengubah perilaku.
+- SIM800L **tidak membalas AT** (5 percobaan) → wiring/power perlu dicek sebelum M5; T19 tetap BLOCKED.
+
+**Status M2:** selesai dan terverifikasi (T03 PASS, T04 PARTIAL karena restart service tidak dilakukan; jalur subscribe-on-connect terbukti). Menunggu konfirmasi user sebelum M3.
 
 ---
 
@@ -273,10 +287,10 @@ Aturan pengisian:
 | B01 | Backup baseline | Salin `.ino`, hitung SHA-256 | File 10737 byte | Backup identik | `4910CDB3...FE48`, 10737 byte | PASS |
 | B02 | Kesehatan backend | `GET /health` | `127.0.0.1:3000` | `status success`, MQTT connected | `{"status":"success","redis_status":"OK","mqtt_connected":true}` | PASS |
 | B03 | Port service | `netstat -ano` | 1883,3000,3306,6379 | Semua LISTENING | `0.0.0.0:1883/3000/3306`, `0.0.0.0:6379` | PASS |
-| B04 | Akses LAN | `Test-NetConnection` | `10.3.24.125:1883`, `:3000` | True | True / True | PASS |
+| B04 | Akses LAN | `Test-NetConnection` | `10.20.226.246:1883`, `:3000` | True | True / True (hotspot `Galaxy A04e 5371`; IP lama `10.3.24.125` sudah tidak berlaku) | PASS |
 | B05 | Firewall | `Get-NetFirewallRule` | inbound | Node + mosquitto Allow | Keduanya Allow, Public, Enabled | PASS |
 | B06 | Library Arduino | Unduh + ekstrak ZIP | 3 repo GitHub | Header tersedia | `TinyGPSPlus.h`, `PubSubClient.h`, `ArduinoJson.h` | PASS |
-| B07 | Menu tes existing | Upload baseline, kirim `a`,`1`–`7`,`s`,`h` | Serial 115200 | Semua perintah merespons | Belum dijalankan agent | NOT RUN |
+| B07 | Menu tes existing | Upload baseline, kirim `a`,`1`–`7`,`s`,`h` | Serial 115200 | Semua perintah merespons | M2: `n/m/h/s` + `1`–`6` merespons; `7` SMS tidak dijalankan; SIM800L tidak membalas | PARTIAL |
 | B08 | Board ESP32 | Cek paket board | Arduino IDE | esp32 3.3.12 terpasang | `esp32/3.3.12` ditemukan | PASS |
 
 > **Catatan B07:** user sebelumnya melaporkan tes komponen berhasil. Karena agent belum melihat log Serial langsung, statusnya sengaja tetap `NOT RUN`, bukan `PASS`.
@@ -285,10 +299,10 @@ Aturan pengisian:
 
 | ID | Tujuan | Langkah | Input | Expected | Actual | Status |
 |---|---|---|---|---|---|---|
-| T01 | Boot aman | Nyalakan device | `config.h` terisi | Relay OFF, buzzer LOW, log boot | — | NOT RUN |
-| T02 | WiFi/MQTT connect | Hubungkan AP + broker | SSID benar | Terhubung < 15 dtk | — | NOT RUN |
-| T03 | Reconnect WiFi | Matikan AP lalu hidupkan | Gangguan 30 dtk | Pulih otomatis | — | NOT RUN |
-| T04 | Reconnect broker | Restart Mosquitto | Restart service | Subscribe ulang | — | NOT RUN |
+| T01 | Boot aman | Nyalakan device | `config.h` terisi | Relay OFF, buzzer LOW, log boot | `POWERON_RESET`; `[BOOT] fw=1.0.0-m2`; `Relay=OFF (terkunci), buzzer=LOW` | PASS |
+| T02 | WiFi/MQTT connect | Hubungkan AP + broker | SSID benar | Terhubung < 15 dtk | WiFi 1,09 dtk; MQTT 1,88 dtk; RSSI -57 dBm | PASS |
+| T03 | Reconnect WiFi | Matikan AP lalu hidupkan | Gangguan 30 dtk | Pulih otomatis | Hotspot off ±30 dtk: WiFi putus t=3,6 dtk; retry tiap 10 dtk; pulih t=34,6 dtk; MQTT t=39,6 dtk; jeda heartbeat 38,3 dtk | PASS |
+| T04 | Reconnect broker | Restart Mosquitto | Restart service | Subscribe ulang | Jalur reconnect terbukti (WiFi putus → MQTT connect ulang → command `{"action":"LOCK"}` 17 B diterima). Restart service saja belum dilakukan | PARTIAL |
 | T05 | Telemetri GPS fix | Bawa outdoor | Fix ≥ 3 satelit | Redis + MySQL terisi | — | NOT RUN |
 | T06 | Telemetri tanpa fix | Demo indoor | `gps_fix=false` | IMU/lock tetap update, tidak error SQL | — | NOT RUN |
 | T07 | Akurasi baterai | Bandingkan multimeter | Divider terpasang | Error ≤ 5% | — | DEFERRED |
@@ -311,7 +325,9 @@ Aturan pengisian:
 | T24 | Duplicate command | Kirim 2× QoS 1 | Action sama | Tidak ada efek ganda | — | NOT RUN |
 | T25 | Backend restart | Restart Node | Service restart | Data tetap konsisten | — | NOT RUN |
 | T26 | Low battery | Baterai ≤ 20% | Hardware tersedia | `battery_low=true` | — | DEFERRED |
-| T27 | Reboot saat sewa | Reset ESP32 | Sesi aktif | Default terkunci + terdokumentasi | — | NOT RUN |
+| T27 | Reboot saat sewa | Reset ESP32 | Sesi aktif | Default terkunci + terdokumentasi | Reboot → `lock_state=true`; sesi sewa belum ada di M2 | PARTIAL |
+| T28 | Heartbeat periodik (M2) | Boot normal, amati `mosquitto_sub` | `bike/telemetry/#` | Interval 5 dtk, payload valid | 8 heartbeat berurutan 5,0 dtk; `fw_version=1.0.0-m2`; RSSI -50…-60; `lock_state=true` | PASS |
+| T29 | Command diterima (M2) | Publish ke `bike/command/BK-001` | `{"action":"UNLOCK"}`, lalu `{"action":"LOCK"}` via `-f` | Callback mencatat, aktuator belum bergerak | `[MQTT] Command masuk 15 B`; `[CMD] Diterima: {action:UNLOCK}`; setelah reconnect: `17 B` + `{"action":"LOCK"}` (JSON valid) | PASS |
 
 ---
 
@@ -345,6 +361,7 @@ Integrasi dinyatakan selesai hanya jika:
 | Relay salah polaritas | Kunci terbalik | Konfirmasi `RELAY_ON LOW` / `RELAY_OFF HIGH`; uji T12/T13 |
 | Alarm menyala terus | Gangguan | Auto-off 60 detik + `ALARM_OFF` |
 | `SENT` dianggap eksekusi | Status palsu | Verifikasi lewat telemetri berikutnya; ACK ditunda |
+| SIM800L tidak membalas `AT` (M2) | T19/M5 gagal | Cek TX/RX silang, GND bersama, 5 V kuat; uji ulang menu `6` sebelum M5 |
 | `telemetry_logs` tumbuh cepat | DB besar | Interval 5 dtk untuk demo; evaluasi throttling setelah M7 |
 | Kredensial bocor | Keamanan | `config.h` tidak di-commit; tidak dikirim lewat chat |
 

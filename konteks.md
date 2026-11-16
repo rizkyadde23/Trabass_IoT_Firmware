@@ -15,16 +15,18 @@ Dokumen ini berisi **fakta yang terverifikasi dari kode/konfigurasi/status servi
 | OS / host | Windows, firmware di `D:\` | PowerShell default |
 | Node.js | `v22.15.0` | `npm` PowerShell kena execution policy; pakai `npm.cmd` bila perlu |
 | Git | `2.47.0.windows.2` | Folder firmware **bukan** git repo |
-| Arduino IDE / CLI | IDE terdeteksi (`.arduinoIDE` ada), `arduino-cli` tidak ada | Library diinstal via ekstraksi ZIP ke sketchbook |
+| Arduino IDE / CLI | IDE 2.3.10 + `arduino-cli 1.5.1` (bundled) | CLI di `...\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe` |
 | Paket board ESP32 | `3.3.12` | `AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.3.12` |
-| IP LAN PC | `10.3.24.125/22` (`Wi-Fi 2`) | ESP32 harus memakai IP ini, bukan `127.0.0.1` |
+| Hotspot aktif | SSID `Galaxy A04e 5371` (`Wi-Fi 2`) | 2.4 GHz; PC dan ESP32 di jaringan yang sama |
+| IP LAN PC | `10.20.226.246/24` (`Wi-Fi 2`) | ESP32 harus memakai IP ini, bukan `127.0.0.1` |
+| IP ESP32 (DHCP) | `10.20.226.212` (teramati M2) | Bisa berubah tiap reconnect; tidak di-hardcode |
 | IP lain | `192.168.56.1/24` (`Ethernet`) | Kemungkinan adapter virtual; hindari untuk device |
 | Backend | `http://127.0.0.1:3000/health` | `status: success`, `redis_status: OK`, `mqtt_connected: true` |
 | MySQL | `127.0.0.1:3306`, DB `bicycle_security_db` | Listen `0.0.0.0:3306` |
 | Redis | `127.0.0.1:6379` | Listen `0.0.0.0:6379` |
 | Mosquitto | `0.0.0.0:1883`, WebSocket `0.0.0.0:9001` | Service `mosquitto` Running, Automatic |
 | Firewall inbound | Node.js dan mosquitto: Allow, Public | Diverifikasi |
-| Reachability PC → IP sendiri | `10.3.24.125:1883` True, `:3000` True | Belum diuji dari ESP32 |
+| Reachability PC → IP sendiri | `10.20.226.246:1883` True, `:3000` True | ESP32 terbukti connect + publish M2 |
 | Frontend dev server | Port `5173` tidak listen | Jalankan `npm run dev` saat uji UI |
 | Sketchbook library | `C:\Users\ADVAN\OneDrive\Documents\Arduino\libraries` | Target instal library M1 |
 
@@ -38,7 +40,7 @@ Dokumen ini berisi **fakta yang terverifikasi dari kode/konfigurasi/status servi
 | `LiquidCrystal_I2C` (Frank de Brabander) | existing | Sudah ada sebelum M1 | `...\Arduino\libraries\LiquidCrystal_I2C` |
 | `Wire` (core ESP32) | bundled | Tersedia | paket board `esp32` |
 
-> Driver USB-serial belum diverifikasi agent karena `arduino-cli` tidak tersedia. Pastikan port COM terlihat di Arduino IDE / Device Manager.
+> Driver USB-serial terverifikasi M2: **Silicon Labs CP210x** di **COM14** (VID `0x10C4`, PID `0xEA60`). Upload `arduino-cli` berhasil. Tutup Serial Monitor Arduino IDE sebelum upload karena port bersifat eksklusif.
 
 ---
 
@@ -64,7 +66,7 @@ flowchart LR
         ESP <-->|UART2 9600| SIM
     end
 
-    subgraph PC["PC Lokal — 10.3.24.125"]
+    subgraph PC["PC Lokal — 10.20.226.246 (hotspot)"]
         MQ[Mosquitto :1883]
         BE[Node.js Express :3000]
         MY[(MySQL :3306<br/>bicycle_security_db)]
@@ -240,7 +242,24 @@ Jika PWA dibuka dari HP: set `VITE_API_URL` ke IP LAN PC dan jalankan Vite denga
 
 ## 6. Kontrak telemetri final (firmware → backend)
 
-**Topic:** `bike/telemetry/BK-001` (QoS 1, retain false)
+**Topic:** `bike/telemetry/BK-001` (publish **QoS 0**, retain false)
+
+> **Batasan PubSubClient v2.8:** library hanya mengirim publish QoS 0. Backend tetap subscribe dengan QoS 0 sehingga tidak ada negosiasi turun yang menggagalkan pengiriman. Untuk LAN lokal ini diterima; QoS 1 end-to-end butuh library/MQTT client lain.
+
+**Heartbeat M2 (payload sementara sebelum telemetri M3):**
+
+```json
+{
+  "type": "heartbeat",
+  "fw_version": "1.0.0-m2",
+  "bike_id": "BK-001",
+  "uptime_ms": 151901,
+  "wifi_rssi": -57,
+  "lock_state": true
+}
+```
+
+Payload ini tidak memiliki `lat/lng`, sehingga backend saat ini mengabaikannya (lihat patch no-fix M3). Bukti M2 diambil dari `mosquitto_sub` dan Serial, bukan dashboard.
 
 **Dengan fix:**
 
@@ -326,7 +345,8 @@ Jika PWA dibuka dari HP: set `VITE_API_URL` ke IP LAN PC dan jalankan Vite denga
 | GPS diuji outdoor untuk T05/T22 | Aktif |
 | SIM800L punya SIM aktif + pulsa untuk T19 | **Belum dikonfirmasi** → T19 BLOCKED |
 | Midtrans sandbox valid untuk T20 | **Belum diverifikasi** → substitusi admin unlock |
-| DHCP reservation `10.3.24.125` | Disarankan, belum dikonfirmasi |
+| DHCP reservation `10.20.226.246` | Disarankan, belum dikonfirmasi; IP hotspot bisa berubah |
+| LWT `bike/status/BK-001` | **Nonaktif di M2** (`MQTT_ENABLE_LWT 0`), topik sudah disiapkan |
 
 ### 8.2 Batasan fase lokal (diketahui dan diterima)
 
@@ -336,6 +356,9 @@ Jika PWA dibuka dari HP: set `VITE_API_URL` ke IP LAN PC dan jalankan Vite denga
 - Broker MQTT anonymous, tanpa TLS.
 - Frontend/backend tidak diubah untuk baseline, kecuali patch no-fix di M3.
 - Raw IMU tidak disimpan/dikirim.
+- **Publish firmware QoS 0** (batasan PubSubClient), subscribe QoS 1.
+- **LWT belum diaktifkan** sampai M2 diterima; deteksi offline memakai stale 30 detik di frontend.
+- Saat AP hilang, log ESP-IDF dapat mencetak `E wifi:sta is connecting, return error` karena `WiFi.reconnect()` dipanggil ketika stack masih connecting. Ini kosmetik; firmware tetap retry dan pulih (dibuktikan T03).
 
 ### 8.3 Yang harus diisi user di `config.h`
 
