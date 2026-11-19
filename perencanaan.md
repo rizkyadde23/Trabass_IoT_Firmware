@@ -1,8 +1,8 @@
 # Perencanaan Integrasi Firmware — Trabass IoT
 
 **Lokasi dokumen:** `d:\Code\ARDUINO\Praktikum IOT\Trabass-IoT-Firmware\perencanaan.md`
-**Versi:** 1.0 — **Tanggal:** 2026-11-16
-**Status saat ini:** Milestone 1 (M1) sedang dikerjakan
+**Versi:** 1.4 — **Tanggal:** 2026-11-19
+**Status saat ini:** M1–M3 selesai; **M4 selesai (logika/state)**, menunggu konfirmasi manual buzzer/LCD sebelum dilanjut M5
 **Bahasa:** teknis Indonesia (tingkat mahasiswa Informatika)
 
 ---
@@ -205,7 +205,8 @@ flowchart TD
 - T08/T23 memakai build override `-DIMU_MOTION_ACCEL_THRESHOLD_G=0.001f -DIMU_MOTION_GYRO_THRESHOLD_DPS=9999.0f`. Gerakan fisik dengan threshold produksi (0.35 g / 40 dps) belum diuji.
 - T09 memakai payload synthetic `lock_state:false,mpu_motion:true` tanpa koordinat, bukan gerakan fisik.
 - Resolusi TAMPER otomatis setelah 120 dtk **tidak berjalan selama geofence masih violated** karena `handleTelemetry` sudah `return` di blok alert. Insiden 10 ditutup lewat payload unlock (19:02:08). Ini perilaku backend lama, bukan regresi patch M3; perlu keputusan user bila ingin diperbaiki.
-- GPS ruang uji `-7.78243,110.41583` berjarak ~3,49 km dari `STATION_LAT=-7.773512`, `STATION_LNG=110.385411`, radius 500 m. Semua telemetri fix memicu `GEOFENCE_VIOLATION`. Konfigurasi pangkalan **tidak diubah**; menunggu keputusan user.
+- GPS ruang uji `-7.78243,110.41583` berjarak ~3,49 km dari pangkalan lama `STATION_LAT=-7.773512`, `STATION_LNG=110.385411` (radius 500 m), sehingga semua telemetri fix memicu `GEOFENCE_VIOLATION`.
+- **Keputusan M4:** pangkalan diubah ke Kampus 1 UPN Veteran Yogyakarta `STATION_LAT=-7.7626945`, `STATION_LNG=110.4095241` dan `GEOFENCE_RADIUS_M=5000`. Lokasi uji ~2,30 km dari titik baru → di dalam batas aman. Alert Redis `bike:BK-001:alert` otomatis `active=false` pada restart backend 08:08:09 dengan `resolved_status=OVERDUE`; tidak ada log `GEOFENCE_VIOLATION` baru setelahnya.
 - Baterai `DEFERRED` (hardware belum ada); SMS T19 `BLOCKED` (SIM800L belum membalas `AT`).
 
 ---
@@ -214,22 +215,38 @@ flowchart TD
 
 **Tujuan:** perintah backend benar-benar menggerakkan relay, buzzer, dan LCD.
 
-**File:** `command_handler.h/.cpp`, `outputs.h/.cpp`, `mqtt_link.h/.cpp`
+**File:**
 
-**Command yang wajib didukung:** `UNLOCK`, `LOCK`, `ALARM_ON`, `ALARM_OFF`, `LOCK_AND_ALARM`, `WARNING_BEEP`, `EXTEND_TIME`, `SEND_SMS` (masuk antrean).
+- Baru: `command_handler.h/.cpp`, `outputs.h/.cpp`
+- Diubah: `mqtt_link.cpp` (antrean diserahkan ke handler), `sketch_nov16a.ino`, `self_test.cpp` (`toggleRelay()` delegate ke `outputs`), `telemetry.cpp` tidak diubah (pin relay tetap sumber `lock_state`), `config.example.h`, backend `.env` (geofence)
 
-**Langkah:**
+**Command yang didukung:** `UNLOCK`, `LOCK`, `ALARM_ON`, `ALARM_OFF`, `LOCK_AND_ALARM`, `WARNING_BEEP`, `EXTEND_TIME`, `SEND_SMS` (log `PENDING_M5`), unknown → log + abaikan.
 
-1. Parse JSON dengan ArduinoJson; validasi `action` dan opsional `duration`/`message`/`phone`.
-2. Dispatch ke handler; abaikan duplikat berdasarkan `(action, counter)` bila tersedia.
-3. Alarm state machine: nyala → auto-off setelah `ALARM_DURATION_MS` atau `ALARM_OFF`.
-4. Buzzer non-blocking: gunakan `millis()`, bukan `delay()` seperti `beep()` baseline.
-5. Update LCD: `TERKUNCI`, `TERBUKA`, `ALARM`, `PERINGATAN`, `PERPANJANG`.
-6. Setelah eksekusi, segera publish telemetri agar backendverifikasi.
+**Langkah yang diterapkan:**
 
-**Pengujian:** T12–T18, T24.
+1. Parse JSON ArduinoJson v7; validasi `action`; baca opsional `timestamp`, `message`, `duration_ms`, `added_minutes`, `end_time`, `target_phone`.
+2. Dedupe ringan 4 slot berdasarkan `action|timestamp` dalam `COMMAND_DEDUPE_WINDOW_MS` (default 3000 ms).
+3. `outputs` menjadi pemilik tunggal relay/buzzer/LCD. Setter absolut (idempoten), alarm auto-off, beep 3 pulse non-blocking, pesan LCD otomatis revert.
+4. Alarm tidak diperpanjang oleh `ALARM_ON` berulang selama masih aktif.
+5. Setiap command yang dieksekusi segera memanggil `telemetry::publishNow()` (force publish QoS 0).
+6. Menu tes serial `3` kini memanggil `outputs::setLock()` sehingga state tidak desinkron.
+
+**Pengujian:** T12–T18, T24, T30 + regresi T01/T05/T10/T11 dan menu serial.
 
 **Kriteria selesai:** respons < 2 detik; `ALARM_OFF` mematikan sirene; command ganda tidak merusak state.
+
+**Actual ringkas (2026-11-19):**
+
+- Build override `ALARM_DURATION_MS=3000` → upload COM14 sukses; build produksi 60 dtk → upload ulang COM14 sukses.
+- `fw_version=1.0.0-m4`; flash 950.420 B (72%), RAM 50.328 B (15%).
+- T12/T13: `UNLOCK` → relay ON/pin LOW/`lock_state:false`; `LOCK` → relay OFF/pin HIGH/`lock_state:true`; telemetri force publish langsung muncul.
+- T14/T15/T16: `ALARM_ON` 3000 ms → auto-off; `ALARM_OFF` mematikan sebelum auto-off; `LOCK_AND_ALARM` menyisakan keadaan terkunci setelah alarm mati. Build produksi diverifikasi `ALARM ON selama 60000 ms`.
+- T17/T18: `[LCD] Pesan ... 'PERINGATAN' | 'Ada gerakan menc'`, `3 pulse` beep; `PERPANJANG | Ditambah 15 mnt`, `added_minutes=15 end_time=...` terbaca.
+- T24: dua `LOCK` identik berturut-turut → yang kedua `[CMD] Duplikat dalam 3000 ms, diabaikan`.
+- T30: admin dashboard `FORCE_UNLOCK`/`FORCE_LOCK` → `admin_command_logs` id 17/18 `SENT`, firmware mengeksekusi keduanya, telemetri `lock_state` mengikuti.
+- Regresi menu serial `o`, `3`, `n`: state relay sinkron (`pin=0` saat terbuka, `pin=1` saat terkunci), WiFi/MQTT `MQTT_CONNECTED`.
+
+**Status M4:** SELESAI untuk logika/state; bunyi buzzer fisik dan tampilan LCD masih perlu konfirmasi manual (agent hanya membuktikan pin, state machine, dan log).
 
 ---
 
@@ -330,24 +347,25 @@ Aturan pengisian:
 | T09 | IMU saat unlocked | Goyang saat terbuka | Gerakan > threshold | `mpu_motion=true`, bukan TAMPER | Payload synthetic `lock_state:false,mpu_motion:true`: TAMPER id 9 RESOLVED, tidak ada TAMPER baru; status akhir `GEOFENCE_VIOLATION` | PARTIAL (synthetic) |
 | T10 | Redis live hash | Kirim telemetri | Payload valid | Field lengkap + `updated_at` | `HGETALL`: `lat=-7.782448`, `lng=110.415797`, `speed=0`, `lock_state=true`, `mpu_motion=false`, `updated_at` terisi | PASS |
 | T11 | MySQL log | Kirim telemetri dengan fix | Payload valid | Baris `telemetry_logs` bertambah | 85→87 dalam 12 dtk; baris berurutan tiap 5 dtk (contoh log 97–99, 18:41:12–18:41:22) | PASS |
-| T12 | `UNLOCK` | Command MQTT/admin | Action UNLOCK | Relay ON, LCD TERBUKA | — | NOT RUN |
-| T13 | `LOCK` | Command MQTT/admin | Action LOCK | Relay OFF, LCD TERKUNCI | — | NOT RUN |
-| T14 | `ALARM_ON` | Command | Action ALARM_ON | Buzzer nyala | — | NOT RUN |
-| T15 | `ALARM_OFF` | Command | Action ALARM_OFF | Buzzer mati | — | NOT RUN |
-| T16 | `LOCK_AND_ALARM` | Timer habis | Action LOCK_AND_ALARM | Kunci + sirene 60 dtk | — | NOT RUN |
-| T17 | `WARNING_BEEP` | Sisa ≤ 5 menit | Action WARNING_BEEP | 3 beep + LCD | — | NOT RUN |
-| T18 | `EXTEND_TIME` | Perpanjangan | Action + deadline | Deadline lokal update, LCD | — | NOT RUN |
-| T19 | `SEND_SMS` | Command SMS | Nomor aktif | SMS diterima < 30 dtk | — | BLOCKED |
+| T12 | `UNLOCK` | Command MQTT/admin | Action UNLOCK | Relay ON, LCD TERBUKA | `mosquitto_pub -q 1`: `[OUTPUT] Relay=ON pin=LOW -> TERBUKA`, `[LCD] Pesan ... 'TERBUKA'`, telemetri `lock_state:false` langsung terbit (uptime 6443 ms) | PASS |
+| T13 | `LOCK` | Command MQTT/admin | Action LOCK | Relay OFF, LCD TERKUNCI | `[OUTPUT] Relay=OFF pin=HIGH -> TERKUNCI`, `lock_state:true` langsung terbit (uptime 14670 ms) | PASS |
+| T14 | `ALARM_ON` | Command | Action ALARM_ON | Buzzer nyala | Build override: `[ALARM] ON selama 3000 ms`, `[ALARM] Auto-off setelah 3000 ms`. Produksi: `[ALARM] ON selama 60000 ms`. Bunyi fisik belum dikonfirmasi agent | PASS (instrumented) |
+| T15 | `ALARM_OFF` | Command | Action ALARM_OFF | Buzzer mati | alarm dinyalakan 2 dtk sebelumnya → `[ALARM] OFF (command/admin)`, state `LOCKED alarm=OFF` sebelum auto-off. Bunyi fisik belum dikonfirmasi agent | PASS (instrumented) |
+| T16 | `LOCK_AND_ALARM` | Timer habis | Action LOCK_AND_ALARM | Kunci + sirene 60 dtk | `[OUTPUT] Lock already TERKUNCI (idempoten)`, `[ALARM] ON selama 3000 ms`, auto-off, telemetri tetap `lock_state:true`. Default produksi 60 dtk diverifikasi di T14 | PASS (instrumented) |
+| T17 | `WARNING_BEEP` | Sisa ≤ 5 menit | Action WARNING_BEEP | 3 beep + LCD | `[OUTPUT] Warning beep mulai/selesai (3 pulse)`, `[LCD] Pesan 5000 ms: 'PERINGATAN' \| 'Ada gerakan menc'`. Bunyi fisik belum dikonfirmasi agent | PARTIAL |
+| T18 | `EXTEND_TIME` | Perpanjangan | Action + deadline | Deadline lokal update, LCD | `[CMD] EXTEND_TIME added_minutes=15 end_time=2026-11-19T09:30:00.000Z`, `[LCD] Pesan ... 'PERPANJANG' \| 'Ditambah 15 mnt'`. **Deadline lokal/NVS tidak diimplementasikan** sesuai keputusan M4 | PARTIAL |
+| T19 | `SEND_SMS` | Command SMS | Nomor aktif | SMS diterima < 30 dtk | M4: payload diterima → `[CMD] SEND_SMS -> PENDING_M5 (SMS tidak dikirim)`; SIM800L belum membalas `AT` | BLOCKED |
 | T20 | Payment E2E | Midtrans sandbox | Settlement | Unlock otomatis | — | NOT RUN |
 | T21 | Timer expiry | Tunggu sewa habis | Sesi aktif | Lock + alarm + insiden | — | NOT RUN |
-| T22 | Geofence | Pindah koordinat | Di luar 500 m | Insiden + alarm | — | NOT RUN |
+| T22 | Geofence | Pindah koordinat | Di luar 5000 m | Insiden + alarm | Config diubah: pangkalan Kampus 1 `(-7.7626945,110.4095241)`, radius 5000 m. Alert `active=false` setelah restart; tidak ada violation baru. Uji koordinat jauh sintetis sengaja tidak dijalankan agar tidak membuat insiden/WA baru | PARTIAL (config verified) |
 | T23 | Tamper | Gerak saat locked | `mpu_motion=true` | Insiden + notifikasi | TAMPER id 10 dibuat; alert Redis `active=true`, `notified=true`, `notify_error` kosong; WhatsApp terkirim. Lihat keterbatasan T08 | PARTIAL |
-| T24 | Duplicate command | Kirim 2× QoS 1 | Action sama | Tidak ada efek ganda | — | NOT RUN |
+| T24 | Duplicate command | Kirim 2× QoS 1 | Action sama | Tidak ada efek ganda | Dua payload `LOCK` identical berturut-turut: yang pertama idempoten (`Lock already TERKUNCI`), yang kedua `[CMD] Duplikat dalam 3000 ms, diabaikan: LOCK\|2026-11-19T08:21:20Z`; hanya satu force telemetri | PASS |
 | T25 | Backend restart | Restart Node | Service restart | Data tetap konsisten | — | NOT RUN |
 | T26 | Low battery | Baterai ≤ 20% | Hardware tersedia | `battery_low=true` | — | DEFERRED |
 | T27 | Reboot saat sewa | Reset ESP32 | Sesi aktif | Default terkunci + terdokumentasi | Reboot M3 → telemetri `lock_state=true`; sesi sewa belum ada | PARTIAL |
 | T28 | Heartbeat periodik (M2) | Boot normal, amati `mosquitto_sub` | `bike/telemetry/#` | Interval 5 dtk, payload valid | 8 heartbeat berurutan 5,0 dtk; `fw_version=1.0.0-m2`; RSSI -50…-60; `lock_state=true` | PASS |
 | T29 | Command diterima (M2) | Publish ke `bike/command/BK-001` | `{"action":"UNLOCK"}`, lalu `{"action":"LOCK"}` via `-f` | Callback mencatat, aktuator belum bergerak | `[MQTT] Command masuk 15 B`; `[CMD] Diterima: {action:UNLOCK}`; setelah reconnect: `17 B` + `{"action":"LOCK"}` (JSON valid) | PASS |
+| T30 | Admin command E2E (M4) | Dashboard admin | `FORCE_UNLOCK`, `FORCE_LOCK` | MQTT → eksekusi → telemetri | `POST /api/admin/bike-command` → `status:success`; `admin_command_logs` id 17/18 `SENT`; firmware `[CMD] Eksekusi 'UNLOCK'/'LOCK'`, `lock_state:false` lalu `true` | PASS |
 
 ---
 

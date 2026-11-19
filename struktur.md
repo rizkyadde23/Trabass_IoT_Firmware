@@ -2,7 +2,7 @@
 
 **Lokasi:** `d:\Code\ARDUINO\Praktikum IOT\Trabass-IoT-Firmware\struktur.md`
 **Tanggal:** 2026-11-16
-**Status:** M2 (implementasi + verifikasi inti)
+**Status:** M4 (command downlink + aktuator; telemetri dan konektivitas sudah terintegrasi)
 
 Dokumen ini memetakan struktur folder tiga repo yang terlibat integrasi dan menjelaskan peran tiap file. Rencana kerja ada di `perencanaan.md`; konteks teknis ada di `konteks.md`.
 
@@ -48,9 +48,9 @@ Trabass-IoT-Firmware/
    ├─ gps_sensor.h / .cpp                 # parsing NMEA non-blocking [SELESAI M3]
    ├─ imu_sensor.h / .cpp                 # sampling + klasifikasi mpu_motion [SELESAI M3]
    ├─ battery_sensor.h / .cpp             # stub, ENABLE_BATTERY_SENSOR [SELESAI M3]
-   ├─ outputs.h / .cpp                    # relay, buzzer, LCD [BELUM — M4]
-   ├─ mqtt_link.h / .cpp                  # WiFi, MQTT, reconnect, publish telemetri, antrean command [SELESAI M3]
-   ├─ command_handler.h / .cpp            # dispatch command [M4]
+   ├─ outputs.h / .cpp                    # relay, buzzer, LCD [SELESAI M4]
+   ├─ mqtt_link.h / .cpp                  # WiFi, MQTT, reconnect, publish telemetri, antrean command [SELESAI M4]
+   ├─ command_handler.h / .cpp            # parse JSON, validasi, dispatch, dedupe [SELESAI M4]
    ├─ sms_service.h / .cpp                # antrean AT command SIM800L [M5]
    ├─ telemetry.h / .cpp                  # builder + publish periodik [SELESAI M3]
    └─ self_test.h / .cpp                  # menu tes baseline dipindah ke sini [SELESAI M2]
@@ -62,16 +62,16 @@ Trabass-IoT-Firmware/
 
 | File | Tanggung jawab | Milestone |
 |---|---|---|
-| `sketch_nov16a.ino` | Hanya `setup()`/`loop()` orchestration; tanpa logika sensor | M2–M3 |
+| `sketch_nov16a.ino` | Hanya `setup()`/`loop()` orchestration; tanpa logika sensor | M2–M4 |
 | `config.example.h` | Semua default: pin, baud, WiFi placeholder, MQTT, threshold, feature flag | M1 |
 | `config.h` | Nilai lokal (kredensial, IP, override); include template paling akhir | M1 |
 | `app_types.h` | `LinkState` (Offline/WifiConnecting/WifiConnected/MqttConnected) + `LinkStats`; tipe bersama tanpa definisi variabel | M2 |
 | `gps_sensor.*` | `begin()`, `update()`, `hasFix()`, `getLat()/getLng()/getSpeed()/getSats()`, freshness `GPS_FIX_MAX_AGE_MS` | M3 |
 | `imu_sensor.*` | `begin()`, `update()`, `motion()`, `readSample()`, retry | M3 |
 | `battery_sensor.*` | `begin()`, `read(percent)`; saat ini selalu `false` (`ENABLE_BATTERY_SENSOR 0`) | M3 (stub) |
-| `outputs.*` | `setLock(bool)`, `setBuzzerPattern()`, `lcdShow()` — non-blocking | M4 |
-| `mqtt_link.*` | `begin()`, `loop()`, `publishTelemetry()`, `takeConnectEvent()`, `takeCommand()`, `stateLabel()`, `stats()` | M2–M3 |
-| `command_handler.*` | Parse JSON, validasi action, dispatch, idempotensi | M4 |
+| `outputs.*` | `setLock()`, `alarmOn()/alarmOff()`, `warningBeep()`, `showMessage()`, `loop()` — non-blocking, pemilik tunggal pin relay/buzzer/LCD | M4 |
+| `mqtt_link.*` | `begin()`, `loop()`, `publishTelemetry()`, `takeConnectEvent()`, `takeCommand()`, `stateLabel()`, `stats()`; loop tidak lagi menguras antrean command | M2–M4 |
+| `command_handler.*` | `begin()`, `loop()`, parse JSON, dedupe `action\|timestamp`, dispatch ke outputs, publish telemetri | M4 |
 | `sms_service.*` | `queueSms()`, `smsLoop()` state machine AT | M5 |
 | `telemetry.*` | Susun payload, kirim tiap interval, publish on reconnect | M3 |
 | `self_test.*` | Pindahkan `i2cScan`, `tesLCD`, `tesBuzzer`, `tesMPU`, `tesGPS`, `tesSIM`, `kirimSMS` | M2 |
@@ -146,11 +146,14 @@ Trabass-IoT-Backend/
 | `src/controllers/telemetryController.js` | Terima telemetri tanpa `lat/lng`, update Redis + tamper, skip log/geofence | M3 | Demo indoor tetap termonitor |
 | `src/services/timerService.js` | Guard `hSet` tanpa koordinat | M3 | Hindari `has_live_location` palsu |
 | `src/controllers/paymentController.js` | Guard cache serupa | M3 | Konsistensi |
+| `.env` | `STATION_LAT=-7.7626945`, `STATION_LNG=110.4095241`, `GEOFENCE_RADIUS_M=5000` | M4 (prasyarat) | Pangkalan diubah ke Kampus 1 UPN Veteran Yogyakarta; radius aman 5 km |
 | `src/config/mqtt.js` | Opsional subscribe `bike/ack/+` | M7 (opsional) | Bukti eksekusi command |
 
-> File backend lain **tidak diubah** tanpa justifikasi teknis dan persetujuan user.
+> File backend lain **tidak diubah** tanpa justifikasi teknis dan persetujuan user. `adminController.js` tetap utuh.
 
 **Status patch M3:** ketiga file sudah diterapkan dan diuji (`node --check` exit 0). Detail perilaku ada di `konteks.md` bagian 6 dan hasil uji di `perencanaan.md`.
+
+**Status M4:** modul `outputs.*` dan `command_handler.*` dibuat; `mqtt_link.cpp`, `.ino`, `self_test.cpp`, dan `config.example.h` disesuaikan. Backend hanya `.env` yang diubah. Firmware produksi `1.0.0-m4` sudah di-upload ulang dengan `ALARM_DURATION_MS=60000`. Build override `ALARM_DURATION_MS=3000` dipakai untuk uji alarm lalu diganti. Frontend tidak diubah.
 
 ---
 

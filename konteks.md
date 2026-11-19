@@ -200,8 +200,10 @@ Field tambahan aman: `gps_fix`, `satellites`, `uptime_ms`, `fw_version`, `alarm_
 | `ALARM_OFF` | `{"action":"ALARM_OFF"}` | Admin |
 | `LOCK_AND_ALARM` | `{"action":"LOCK_AND_ALARM"}` | Sewa habis |
 | `WARNING_BEEP` | `{"action":"WARNING_BEEP","message":"..."}` | Sisa ≤ 5 menit |
-| `EXTEND_TIME` | `{"action":"EXTEND_TIME","duration":30}` | Perpanjangan |
-| `SEND_SMS` | `{"action":"SEND_SMS","phone":"...","message":"..."}` | Fallback WA gagal |
+| `EXTEND_TIME` | `{"action":"EXTEND_TIME","added_minutes":15,"end_time":"...Z"}` | Perpanjangan |
+| `SEND_SMS` | `{"action":"SEND_SMS","target_phone":"...","message":"..."}` | Fallback WA gagal |
+
+Field opsional lain yang dipahami firmware M4: `timestamp` (kunci dedupe), `message` (LCD/peringatan), `duration_ms` (durasi alarm, dibatasi `ALARM_MAX_DURATION_MS`). Backend mengirim `timestamp` untuk sebagian besar command; `notificationService` mengirim `target_phone` untuk `SEND_SMS`.
 
 ### 4.3 Database (tabel relevan)
 
@@ -223,7 +225,7 @@ Field tambahan aman: `gps_fix`, `satellites`, `uptime_ms`, `fw_version`, `alarm_
 | `SEND_SMS` via MQTT bukan fallback sejati | Offline → SMS tidak jalan | Opsional SMS lokal saat tamper + offline |
 | Broker anonymous tanpa TLS | Risiko LAN | Diterima lokal; produksi perlu auth+TLS |
 | `telemetry_logs` cepat besar (±17k/hari @5s) | Storage | Evaluasi throttling setelah M7 |
-| `ALARM_ON` tidak auto-OFF | Sirene terus | Auto-off 60 s + `ALARM_OFF` |
+| `ALARM_ON` tidak auto-OFF | Sirene terus | **Sudah diatasi M4**: auto-off 60 s + `ALARM_OFF`; durasi command dibatasi `ALARM_MAX_DURATION_MS` |
 
 ---
 
@@ -329,15 +331,21 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
 | `ALARM_OFF` | Hentikan sirene | sesuai state | OFF | |
 | `LOCK_AND_ALARM` | Lock + sirene | `ALARM` | ON | Timer habis |
 | `WARNING_BEEP` | 3 beep | `PERINGATAN` | Beep | Non-blocking |
-| `EXTEND_TIME` | Simpan deadline lokal | `PERPANJANG` | — | Opsional |
-| `SEND_SMS` | Antre SMS ke SIM800L | — | — | Butuh nomor + pesan |
+| `EXTEND_TIME` | Tampilkan `added_minutes`/`end_time` di LCD | `PERPANJANG` | — | **Tidak** menyimpan deadline lokal/NVS |
+| `SEND_SMS` | Log `PENDING_M5` saja | — | — | Tidak mengirim SMS sampai M5 |
+| Unknown | Log + abaikan | — | — | State aman |
 
-**Aturan eksekusi:**
+**Aturan eksekusi (terimplementasi M4):**
 
-- Parse aman; action tidak dikenal → log + abaikan.
-- Callback MQTT tidak boleh `delay()` panjang.
-- Setelah eksekusi, publish telemetri terbaru.
-- Command duplikat QoS 1 tidak boleh efek ganda berbahaya.
+- Parse aman ArduinoJson; action tidak dikenal → log + abaikan.
+- Callback MQTT hanya menyalin payload ke antrean; eksekusi di `loop()`.
+- Tidak ada `delay()` di jalur `outputs::loop()`/`command_handler::loop()`.
+- Setelah command dieksekusi, `telemetry::publishNow()` langsung mempublish telemetri (QoS 0).
+- Dedupe 4 slot: kunci `action|timestamp`, window `COMMAND_DEDUPE_WINDOW_MS` (default 3000 ms).
+- Setter state absolut: `LOCK`/`UNLOCK` idempoten; `ALARM_ON` berulang tidak memperpanjang alarm yang aktif.
+- `outputs` adalah pemilik tunggal relay/buzzer/LCD; menu tes serial `3` kini delegate ke `outputs::setLock()`.
+
+**Status M4:** selesai untuk state machine dan logging. Bukti ada di `perencanaan.md` T12–T18/T24/T30. Bunyi fisik dan tampilan LCD perlu konfirmasi manual; agent hanya membuktikan pin, log, dan telemetri.
 
 ---
 
@@ -353,6 +361,7 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
 | Reboot saat sewa → default terkunci | Aktif |
 | Menu tes serial dipertahankan di balik flag | Aktif |
 | GPS diuji outdoor untuk T05/T22 | Aktif |
+| Pangkalan = Kampus 1 UPN Veteran Yogyakarta `(-7.7626945, 110.4095241)`, radius 5000 m | Aktif sejak M4; menggantikan pangkalan lama `(-7.773512, 110.385411)` / 500 m |
 | SIM800L punya SIM aktif + pulsa untuk T19 | **Belum dikonfirmasi** → T19 BLOCKED |
 | Midtrans sandbox valid untuk T20 | **Belum diverifikasi** → substitusi admin unlock |
 | DHCP reservation `10.20.226.246` | Disarankan, belum dikonfirmasi; IP hotspot bisa berubah |
@@ -371,8 +380,12 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
 - Saat AP hilang, log ESP-IDF dapat mencetak `E wifi:sta is connecting, return error` karena `WiFi.reconnect()` dipanggil ketika stack masih connecting. Ini kosmetik; firmware tetap retry dan pulih (dibuktikan T03).
 - **Uji no-fix M3** memakai build override `-DGPS_FIX_MAX_AGE_MS=1`; firmware produksi tetap 5000 ms dan sudah di-upload ulang.
 - **Uji jalur IMU M3** memakai override threshold `0.001 g` / `9999 dps`. Threshold produksi `0.35 g` / `40 dps` belum diverifikasi dengan gerakan fisik.
-- **GPS ruang uji** `-7.78243,110.41583` berada ~3,49 km dari pangkalan `-7.773512,110.385411` (radius 500 m), sehingga status dashboard menjadi `GEOFENCE_VIOLATION`. Config pangkalan belum diubah.
-- **Resolusi TAMPER otomatis** (`TAMPER_ALERT_RESET_SECONDS=120`) hanya dieksekusi pada jalur kondisi normal. Selama geofence masih violated, `handleTelemetry` return lebih awal sehingga insiden TAMPER tetap `ACTIVE` sampai ada payload unlock. Perilaku ini sudah ada sebelum patch M3.
+- **Geofence M4:** pangkalan sekarang Kampus 1 UPN Veteran Yogyakarta `(-7.7626945, 110.4095241)`, radius `5000 m`. Lokasi uji ~2,30 km dari titik baru sehingga alarm geofence tidak memicu. Alert `bike:BK-001:alert` menjadi `active=false` saat restart backend 08:08:09. Insiden `GEOFENCE_VIOLATION` lama tetap perlu ditutup manual; uji koordinat jauh sintetis tidak dijalankan agar tidak membuat insiden/WA baru.
+- **Resolusi TAMPER otomatis** (`TAMPER_ALERT_RESET_SECONDS=120`) hanya dieksekusi pada jalur kondisi normal. Selama geofence masih violated, `handleTelemetry` return lebih awal sehingga insiden TAMPER tetap `ACTIVE` sampai ada payload unlock. Perilaku ini sudah ada sebelum patch M3 dan **sengaja tidak dipatch** di M4.
+- **M4 — bunyi buzzer / tampilan LCD** belum dikonfirmasi secara fisik oleh agent. Bukti yang tersedia: perubahan pin, state machine, log `[ALARM]`/`[OUTPUT]`/`[LCD]`, dan telemetri.
+- **M4 — `EXTEND_TIME` tidak menyimpan deadline lokal/NVS**, hanya menampilkan pesan LCD dan mencatat payload. Auto-lock saat offline tetap ditunda.
+- **M4 — `SEND_SMS` hanya `PENDING_M5`**; SIM800L tidak disentuh (T19 tetap `BLOCKED`).
+- **M4 — tidak ada ACK command**; `SENT` di `admin_command_logs` hanya berarti diterima broker. Eksekusi dibuktikan lewat telemetri berikutnya, bukan ACK device.
 
 ### 8.3 Yang harus diisi user di `config.h`
 

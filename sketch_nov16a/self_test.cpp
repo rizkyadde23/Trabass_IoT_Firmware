@@ -17,6 +17,7 @@
 #include "config.h"
 #include "self_test.h"
 #include "imu_sensor.h"
+#include "outputs.h"
 
 // Objek hardware dimiliki oleh sketch_nov16a.ino.
 extern LiquidCrystal_I2C lcd;
@@ -26,8 +27,6 @@ extern HardwareSerial sim;
 extern void feedGPS();
 
 namespace {
-
-bool relayOn = false;
 
 bool i2cAda(uint8_t addr) {
   Wire.beginTransmission(addr);
@@ -96,11 +95,13 @@ void tesBuzzer() {
 }
 
 void toggleRelay() {
-  relayOn = !relayOn;
-  digitalWrite(RELAY_PIN, relayOn ? RELAY_ON : RELAY_OFF);
+  // M4: state relay dimiliki outputs, menu tes hanya meminta perubahan.
+  // Jika sedang terkunci -> buka (relay ON); sebaliknya kunci lagi.
+  const bool akanAktif = outputs::isLocked();
+  outputs::setLock(!akanAktif);
   Serial.printf("[RELAY] %s (solenoid %s)\n",
-                relayOn ? "ON" : "OFF",
-                relayOn ? "teraktivasi" : "nonaktif");
+                akanAktif ? "ON" : "OFF",
+                akanAktif ? "teraktivasi" : "nonaktif");
   Serial.println("  Dengarkan bunyi 'klik' relay dan cek solenoid.");
 }
 
@@ -267,7 +268,8 @@ void tesSemua() {
 }
 
 bool relayState() {
-  return relayOn;
+  // true = relay ON = solenoid aktif = sepeda terbuka.
+  return !outputs::isLocked();
 }
 
 } // namespace self_test

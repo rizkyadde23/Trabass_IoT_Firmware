@@ -1,12 +1,14 @@
 /*
   Trabass IoT - Security System Sepeda Sewa (ESP32)
-  Milestone 3: telemetri GPS + IMU + lock state
+  Milestone 4: telemetri + command downlink & aktuator
 
   Arsitektur file:
     sketch_nov16a.ino  -> orkestrasi setup()/loop() + menu serial
     gps_sensor.*       -> parsing NMEA non-blocking, hasFix + lat/lng/speed
     imu_sensor.*       -> sampling MPU6050 + klasifikasi mpu_motion
     battery_sensor.*   -> stub (ENABLE_BATTERY_SENSOR 0)
+    outputs.*          -> pemilik relay, buzzer, LCD (state absolut)
+    command_handler.*  -> parse JSON, dispatch command, publish telemetri
     telemetry.*        -> builder payload + publish periodik
     mqtt_link.*        -> WiFi/MQTT, reconnect, antrean command
     self_test.*        -> tes komponen baseline (LCD, buzzer, relay, MPU, GPS, SIM, SMS)
@@ -18,6 +20,7 @@
 
   Perintah:
     n      = status jaringan + sensor (GPS/IMU/baterai)
+    o      = status aktuator (relay/alarm/LCD)
     m      = publish telemetri sekarang
     t      = cetak payload telemetri tanpa publish
     a      = tes otomatis semua (kecuali relay)
@@ -32,13 +35,12 @@
     h      = bantuan
     AT...  = perintah AT langsung ke SIM800L (contoh: AT+CSQ)
 
-  Catatan M3:
+  Catatan M4:
     - tesSemua() TIDAK dijalankan otomatis saat boot.
-    - Telemetri dikirim tiap TELEMETRY_INTERVAL_MS (default 5 dtk) dan
-      segera setelah MQTT reconnect.
-    - Saat GPS belum fix, payload memakai lat/lng null; backend tetap
-      menyimpan IMU/lock dan melewati log/geofence.
-    - Command MQTT baru dicatat di Serial; eksekusi aktuator di M4.
+    - Telemetri dikirim tiap TELEMETRY_INTERVAL_MS (default 5 dtk),
+      segera setelah MQTT reconnect, dan setelah command dieksekusi.
+    - Command MQTT diparse/didispatch oleh command_handler ke outputs.
+    - Alarm otomatis mati; reboot selalu dalam keadaan terkunci.
 */
 
 #include <Wire.h>
@@ -47,9 +49,11 @@
 
 #include "config.h"
 #include "battery_sensor.h"
+#include "command_handler.h"
 #include "gps_sensor.h"
 #include "imu_sensor.h"
 #include "mqtt_link.h"
+#include "outputs.h"
 #include "self_test.h"
 #include "telemetry.h"
 
@@ -70,6 +74,7 @@ static size_t serialLen = 0;
 void feedGPS();
 static void bantuan();
 static void printNetworkStatus();
+static void printOutputStatus();
 static void handleLine(const char *line);
 static void pollSerial();
 
@@ -83,7 +88,7 @@ void feedGPS() {
 static void bantuan() {
   Serial.println();
   Serial.println("Perintah:");
-  Serial.println("  n=status jaringan+sensor | m=publish telemetri | t=payload");
+  Serial.println("  n=jaringan+sensor | o=aktuator | m=publish telemetri | t=payload");
 #if ENABLE_SERIAL_TEST_MENU
   Serial.println("  a=semua | 1=LCD | 2=buzzer | 3=relay | 4=MPU | 5=GPS | 6=SIM | 7=SMS");
   Serial.println("  s=scan I2C | h=bantuan | AT...=langsung ke SIM800L");
@@ -134,6 +139,17 @@ static void printNetworkStatus() {
   }
 }
 
+static void printOutputStatus() {
+  Serial.println("[OUTPUT] ---------- aktuator ----------");
+  Serial.printf("[OUTPUT] state=%s relay=%s pin=%d alarm=%s sisa=%lu ms beep=%s\n",
+                outputs::stateLabel(),
+                outputs::isLocked() ? "OFF" : "ON",
+                digitalRead(RELAY_PIN),
+                outputs::isAlarmActive() ? "ON" : "OFF",
+                (unsigned long)outputs::alarmRemainingMs(),
+                outputs::isBeeping() ? "ya" : "tidak");
+}
+
 static void handleLine(const char *line) {
   if (line == nullptr || line[0] == '\0') return;
 
@@ -145,6 +161,7 @@ static void handleLine(const char *line) {
 
   switch (line[0]) {
     case 'n': printNetworkStatus(); break;
+    case 'o': printOutputStatus(); break;
     case 'm': telemetry::publishNow(); break;
     case 't': telemetry::printPayload(); break;
 #if ENABLE_SERIAL_TEST_MENU
@@ -191,14 +208,12 @@ void setup() {
   Serial.println();
   Serial.printf("[BOOT] Trabass fw=%s bike=%s\n", FW_VERSION, BIKE_ID);
 
-  // Fail-safe: terkunci dan buzzer diam sejak boot.
-  pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, RELAY_OFF);
-  pinMode(BUZZER_PIN, OUTPUT);
-  digitalWrite(BUZZER_PIN, LOW);
-  Serial.println("[BOOT] Relay=OFF (terkunci), buzzer=LOW");
-
+  // I2C harus aktif lebih dulu karena outputs::begin() menginit LCD.
   Wire.begin(SDA_PIN, SCL_PIN);
+
+  // Fail-safe: terkunci dan buzzer diam sejak boot.
+  outputs::begin();
+
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
   sim.begin(SIM_BAUD, SERIAL_8N1, SIM_RX_PIN, SIM_TX_PIN);
 
@@ -206,6 +221,7 @@ void setup() {
   imu_sensor::begin();
   battery_sensor::begin();
   telemetry::begin();
+  command_handler::begin();
 
 #if ENABLE_SERIAL_TEST_MENU
   bantuan();
@@ -218,6 +234,9 @@ void loop() {
   feedGPS();
   imu_sensor::update();
   mqtt_link::loop();
+  // Handler sudah mempublish telemetri paksa setelah command dieksekusi.
+  command_handler::loop();
+  outputs::loop();
   telemetry::loop();
   pollSerial();
 

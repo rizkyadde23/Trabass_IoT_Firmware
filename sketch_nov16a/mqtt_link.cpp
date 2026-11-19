@@ -254,11 +254,7 @@ void loop() {
     mqtt.loop();
   }
 
-  // M2/M3: command hanya dicatat. M4 akan melakukan dispatch.
-  char command[kCmdSlotSize];
-  while (takeCommand(command, sizeof(command))) {
-    Serial.printf("[CMD] Diterima: %s\n", command);
-  }
+  // M4: antrean command dikuras oleh command_handler::loop(), bukan di sini.
 }
 
 bool wifiConnected() {
