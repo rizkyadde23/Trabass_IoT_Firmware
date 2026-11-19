@@ -1,8 +1,8 @@
 # Perencanaan Integrasi Firmware — Trabass IoT
 
 **Lokasi dokumen:** `d:\Code\ARDUINO\Praktikum IOT\Trabass-IoT-Firmware\perencanaan.md`
-**Versi:** 1.4 — **Tanggal:** 2026-11-19
-**Status saat ini:** M1–M3 selesai; **M4 selesai (logika/state)**, menunggu konfirmasi manual buzzer/LCD sebelum dilanjut M5
+**Versi:** 1.7 — **Tanggal:** 2026-11-19
+**Status saat ini:** M1–M4 selesai. **M5 diimplementasikan lalu disupersede**: layanan SMS dihapus karena user memprioritaskan internet GPRS. **M6A (WiFi + GPRS via TinyGSM, broker publik HiveMQ) selesai secara fungsional**: flash 966.008 B / RAM 52.400 B ter-upload; `AT→OK`, `CREG 0,1`, `CIFSR` IP, MQTT/telemetri/command via GPRS terbukti; failover otomatis 30 dtk + pemulihan WiFi PASS (T37–T40, T42). T41 `PARTIAL` (endurance 30 menit belum). T19/T31–T36 tidak dijalankan lagi. M6B (alur bisnis) dan M7 masih terbuka.
 **Bahasa:** teknis Indonesia (tingkat mahasiswa Informatika)
 
 ---
@@ -252,25 +252,100 @@ flowchart TD
 
 ### M5 — SMS fallback SIM800L
 
-**Tujuan:** `SEND_SMS` berjalan tanpa memblokir loop.
+**Tujuan:** `SEND_SMS` benar-benar mengantre dan mengirim SMS lewat SIM800L tanpa memblokir loop.
 
-**File:** `sms_service.h/.cpp`, `command_handler.h/.cpp`
+**File:**
 
-**Langkah:**
+- Baru: `sms_service.h/.cpp`
+- Diubah: `command_handler.cpp` (`SEND_SMS` → `queueSms()`), `mqtt_link.cpp` (slot command 192→512 B), `sketch_nov16a.ino` (begin/loop + mode manual AT), `self_test.h/.cpp` (menu `8` diagnostik baud), `config.example.h` (`FW_VERSION=1.0.0-m5`, konstanta M5). Backend dan frontend **tidak diubah**.
 
-1. Antrean SMS berukuran `SMS_QUEUE_SIZE`.
-2. State machine AT: `AT` → `ATE0` → `AT+CPIN?` → `AT+CMGF=1` → `AT+CMGS` → prompt `>` → teks → `Ctrl+Z` → tunggu `OK/ERROR`.
-3. Sanitasi nomor (digit `+`/`0–9`) dan teks ASCII; panjang pesan dibatasi.
-4. Retry terbatas, log ke Serial dengan prefix `[SMS]`.
-5. Opsional: SMS lokal saat tamper dan MQTT putus (**tidak** menggantikan jalur utama).
+**Langkah yang diterapkan:**
 
-**Pengujian:** T19, T23.
+1. Antrean `SMS_QUEUE_SIZE=4`; command handler memanggil `sms_service::queueSms(target_phone, message)` (fallback field `phone` untuk kompatibilitas). Payload ditolak bila nomor/pesan invalid atau antrean penuh, tetapi telemetri tetap dipublish.
+2. State machine non-blocking: `AT` → `ATE0` → `AT+CPIN?` → `AT+CREG?` → `AT+CMGF=1` → `AT+CMGS="nomor"` → prompt `>` → teks + `Ctrl+Z` → tunggu `OK/ERROR`. Tidak ada `delay()` di jalur otomatis.
+3. Sanitasi: nomor hanya `+`/digit, `+62…`/`62…` dinormalisasi ke `08…`, 9–15 digit; teks ASCII printable maks. 140 char (non-ASCII/CR/LF/Ctrl+Z → `?`) sehingga injeksi AT tidak mungkin.
+4. Retry `SMS_MAX_ATTEMPTS=2` per pesan dengan jeda `SMS_RETRY_INTERVAL_MS`; counter direset tiap pesan (bug ini ditemukan dan diperbaiki saat uji antrean).
+5. Konflik UART diatasi: `sms_service` pemilik `sim` saat mode auto; perintah `AT...` dan menu `6`/`7`/`a` menangguhkan service dan meneruskan balasan ke Serial hanya selama jendela `SIM_MANUAL_WINDOW_MS`.
+6. `ENABLE_LOCAL_TAMPER_SMS=0` (default): SMS lokal saat tamper + offline **tidak** diaktifkan agar tidak duplikat dengan WA/SMS fallback backend.
+7. Menu `8` = diagnostik baud SIM (9600/19200/38400/57600/115200) untuk membedakan baud mismatch vs modul mati.
+
+**Pengujian:** T19, T31–T36 + regresi T12/T13/T28.
 
 **Kriteria selesai:** SMS diterima < 30 detik; loop tidak stall; kegagalan tercatat di log. Jika SIM belum aktif → status `BLOCKED`, bukan `PASS`.
 
+**Actual ringkas (2026-11-19):**
+
+- Build produksi `1.0.0-m5` sukses: flash 954.280 B (72%), RAM 52.464 B (16%), upload COM14 sukses.
+- `m5_queue_tests.log`: payload valid masuk antrean (`pending=1`), 2 attempt gagal (`AT tidak merespons`), antrean dibuang, telemetri tetap tiap 5 dtk.
+- `m5_sanitize.log`: payload 350 B terbaca utuh setelah buffer diperbesar ke 512 B; `+62 878-6688-7578` → `087866887578`; non-ASCII → `?`; teks dipotong 140 char; string `AT+CMGS=dummy` di dalam pesan tidak dieksekusi.
+- `m5_queue_full_final.log`: 5 command berturut-turut → 4 diterima (`pending=1..4`), ke-5 `[SMS] Antrean penuh, pesan ditolak`; tiap pesan mendapat `Attempt 1/2` dan `2/2` (reset terverifikasi); telemetri 5 dtk tidak berhenti.
+- `m5_boot_sim.log` + `m5_baud_diag.log`: menu `6` gagal setelah 5× `AT`; diagnostik menu `8` tidak mendapat balasan di kelima baud.
+- `m5_regression.log`: menu `n` menampilkan `[SMS] state=IDLE pending=0 busy=tidak`; raw `AT` tidak mengganggu loop; `UNLOCK`/`LOCK`, LCD, dan publish 0 gagal tetap normal.
+
+**Status M5:** **DISUPERSEDE oleh M6A (2026-11-19).** Bukti software T33–T36 tetap disimpan sebagai history, tetapi tidak lagi dipakai sebagai kriteria selesai. `sms_service.h/.cpp`, `NOMOR_TUJUAN`, menu `7`/`8`, dan seluruh jalur `SEND_SMS` dihapus. T19/T31–T36 dinyatakan `RETIRED`, bukan `PASS`/`FAIL` baru. Alasan: UART2 dipakai penuh oleh TinyGSM untuk GPRS, dan pengiriman SMS nyata tidak pernah terbukti (modem tidak merespons `AT`).
+
 ---
 
-### M6 — Integrasi alur bisnis end-to-end
+### M6A — Internet GPRS SIM800L via TinyGSM (menggantikan M5)
+
+**Tujuan:** WiFi tetap utama; saat WiFi putus, MQTT (telemetri + command) otomatis memakai GPRS SIM800L. SMS tidak ada lagi.
+
+**Keputusan kunci:**
+
+- Modem: SIM800L v2 EVB tanpa PWRKEY, self-power. APN by.u/Telkomsel `internet`, user/password kosong.
+- Wiring final yang dipakai firmware (sudah ditukar user di hardware): **TXD modul → GPIO16 (RX ESP32)**, **RXD modul ← GPIO17 (TX ESP32)**, **VDD → 3V3 ESP32**, GND bersama. GPS NEO-6M memakai **GPIO26/27**. Tidak ada `SIM_PWRKEY_PIN`. Suplai 5 V modul **wajib adaptor terpisah ≥ 2 A**; adaptor 5 V/3 A sudah dipasang user pada uji final (sebelumnya dari VIN ESP32 dan memicu `UNDER-VOLTAGE WARNING`).
+- Broker: `broker.hivemq.com:1883` (IP LAN tidak reachable dari GPRS). Topik namespaced: `trabass/<BIKE_ID>/telemetry`, `trabass/<BIKE_ID>/command`, `trabass/<BIKE_ID>/ack`, `trabass/<BIKE_ID>/status`.
+- Failover: `WIFI_FAILOVER_AFTER_MS=30000`, kembali ke WiFi setelah `WIFI_RESTORE_STABLE_MS=15000`. Radio WiFi dimatikan sementara saat GPRS dicoba (`GPRS_WIFI_PROBE_MS=30000`), lalu dipole-ulang untuk mendeteksi pemulihan; ini hasil diagnosis karena aktivitas WiFi mengganggu UART2 bila 5 V masih bersama VIN ESP32.
+- MQTT: publish QoS 0 (batasan `PubSubClient`), subscribe QoS 1, buffer 512 B, LWT masih mati.
+- Dua instance `PubSubClient` (`mqttWifi(wifiClient)`, `mqttGsm(gprs_link::client())`) karena `PubSubClient` menyimpan `Client&` saat konstruksi. Callback dan antrean command sama.
+
+**File:**
+
+- Baru: `gprs_link.h/.cpp` (pemilik tunggal UART2, `TinyGsm`, `TinyGsmClient`, state machine attach, `debugAt()`, `swapPins()`, `scanUart()`).
+- Diubah: `mqtt_link.h/.cpp` (dual transport + failover + `transportLabel()`/`gprsIp()`/`gprsAttached()`), `sketch_nov16a.ino` (menu `6`, `9`, `0`, hapus manual-window SMS), `command_handler.cpp` (`SEND_SMS` → diabaikan), `self_test.h/.cpp` (hapus `tesSIM`/`diagBaudSIM`/`kirimSMS`), `app_types.h` (state/counter GPRS), `config.example.h` + `config.h` (versi `1.0.0-gprs`, konstanta GPRS, broker/topik baru).
+- Dihapus: `sms_service.h/.cpp`.
+- Backend: `.env` → `MQTT_BROKER_URL=mqtt://broker.hivemq.com:1883`; `src/config/mqtt.js` subscribe `trabass/+/telemetry`; `src/app.js` filter `trabass/…/telemetry`; topik command di `paymentController.js`, `timerService.js`, `bikeCommandService.js`, `telemetryController.js`; `notificationService.js` fallback WA gagal menjadi log-only. Frontend tidak diubah.
+
+**Langkah yang diterapkan:**
+
+1. `gprs_link::begin()` hanya menyiapkan UART2 dan masuk `IDLE`. Attach dimulai saat failover atau menu `6`, sehingga WiFi normal tidak mengganggu modem.
+2. State machine per langkah: `PROBE(AT)` → `INIT(modem.begin())` → `SIM_READY(CPIN?)` → `SIGNAL(CSQ)` → `REGISTER(CREG?/COPS?)` → `ATTACH(gprsConnect)` → `GET_IP(CIFSR)` → `ONLINE`. Satu langkah AT bisa memblokir beberapa detik (keterbatasan TinyGSM) tetapi hanya saat transisi; retry tiap `GPRS_ATTACH_INTERVAL_MS=10000`.
+3. `swapPins()` (menu `9`) menukar `begin(...,16,17)` ↔ `(...,17,16)` saat runtime lalu mengirim `AT`, tanpa re-solder. Terminator AT default sudah CRLF (kode tester user yang berhasil memakai CRLF); `scanUart()` tetap menguji CR dan CRLF. Baud modem diubah permanen dari autobaud (`+IPR:0`) ke **9600 tetap** lewat passthrough, lalu diverifikasi `+IPR: 9600`.
+4. `scanUart()` (menu `0`) menguji 2 mapping × 8 baud (1200–115200) × terminator `CR`/`CRLF` untuk membedakan baud mismatch vs modul mati.
+5. `mqtt_link::loop()` menjalankan `gprs_link::loop()`, `ensureWifi()`, `ensureGprs()`, `ensureMqtt()`, lalu `loop()` pada instance aktif. Saat pindah transport, timer reconnect direset dan sesi TCP GPRS dilepas saat kembali ke WiFi.
+6. Backend tetap menerima telemetri lama `bike/telemetry/<id>` (toleran), tetapi command hanya dikirim ke topik baru.
+
+**Pengujian:** T37–T42 + regresi T12/T13/T28 via WiFi.
+
+**Kriteria selesai:** `AT→OK`, attach GPRS dapat IP, telemetri publish dan command downlink lewat GPRS, failover WiFi→GPRS→WiFi terbukti, stabil 30 menit. Jika modem tidak merespons → `BLOCKED`, bukan `PASS`.
+
+**Actual ringkas (2026-11-19, setelah swap pin hardware + adaptor 5 V/3 A):**
+
+- Compile produksi final sukses: flash **966.008 B (73%)**, RAM **52.400 B (15%)**; upload COM14 sukses. Versi `1.0.0-gprs`.
+- Diagnostik pin lama (26/27) disimpan sebagai history: `m6_uart_scan.log` 32 kombinasi kosong. Setelah user menukar kabel (SIM 16/17, GPS 26/27), `m6_at_newpins.log`: `AT -> ATOK`, `AT+IPR? -> +IPR: 0` (autobaud), `AT+CREG? -> +CREG: 0,2`.
+- `m6_sim_diag.log`: `CPIN: READY`, `CCID 8962100833903268361` (Telkomsel), `CSQ: 0,0`, `CREG: 0,2`, `COPS: 0`, `CGATT: 0`, `CIFSR ERROR`. `m6_manual_operator.log`: pemilihan operator manual `51010` → `ERROR`; tetap `CREG 0,2` selama 95 dtk.
+- `m6_passthrough_test.log` (sketch passthrough sementara, pin 16/17, 9600): `AT -> OK`, `Call Ready`, `CSQ 0,0`, `CREG 0,2`. `m6_set_fixed_baud.log`: `AT+IPR=9600` lalu `+IPR: 9600` (tersimpan). Jadi wiring/level/UART2 modul **tidak bermasalah**.
+- `m6_gprs_only_test.log` (hanya `gprs_link`): `AT -> ATOK`, `CREG 0,2`. `m6_gprs_wifi_test2.log` (ditambah `WiFi.begin()`): balasan `.hex` menjadi `7D 57 AB 7B…` (garbage). `m6_gprs_wifioff_test.log` (WiFi dimatikan): `AT -> ATOK`. **Akar gangguan AT di firmware utama = aktivitas WiFi saat 5 V modem masih di VIN ESP32**, bukan baud/terminator/kabel. Firmware sudah diperbaiki dengan `parkWifiForGprs()` + probe WiFi berkala + `gprs_link::cancel()` saat WiFi pulih.
+- `m6_gprs_wifioff_main2.log`: menu `6` mematikan WiFi, `AT -> ATOK`, `CPIN READY`, `CSQ 0,0`, `CREG 0,0`; state machine lanjut ke `SIM_READY` lalu retry karena `reg=2`. WiFi probe berhasil pulih dan transport kembali WiFi; telemetri publish 0 gagal.
+- `m6_failover_final.log` (SSID uji sengaja salah): `WiFi putus 30000 ms, failover ke GPRS`, radio WiFi dimatikan, `SIM READY`, `CSQ=16` sempat muncul, tetapi `Belum terdaftar jaringan (reg=2)` terus berulang; probe WiFi gagal lalu radio dimatikan lagi. Failover terpicu tepat 30 dtk, state `GPRS_ATTACHING`, loop tidak stall.
+- `m6_long_registration.log` (200 dtk): `CPIN READY`, `CSQ 0,0` dominan, `CREG 0,2` menetap, `CGATT 0`, dan modul mengirim URC **`UNDER-VOLTAGE WARNING`**. Ini buku langsung bahwa suplai 5 V dari VIN ESP32 tidak cukup; cakupan/operator 2G juga belum terbukti.
+- `m6_final_cmd3.log` + `GET /health`: regresi final `UNLOCK`/`LOCK` via `trabass/BK-001/command` PASS, `publish=8 gagal=0 cmd=2`, backend `mqtt_connected:true`, subscribe `trabass/+/telemetry`. Tidak ada baris `telemetry_logs` baru karena GPS sedang `gps_fix=false` (backend sengaja tidak insert koordinat null); bukan kegagalan MQTT.
+- Alert geofence lama sudah diperbarui di `app_settings` ke `(-7.7626945,110.4095241,5000)`; alert lama `active=false`, `resolved_status=OVERDUE`.
+
+**Bukti final setelah adaptor 5 V/3 A terpasang (2026-11-19):**
+
+- `m6_extpower_check2.log`: status awal `GPRS=attached IP=10.201.214.162 CSQ=13`; `AT -> OK`, `+CPIN: READY`, `+CSQ: 14,0`, `+CREG: 0,1`, `+COPS: 0,0,"TELKOMSEL"`, `+CGATT: 1`, `AT+CIFSR -> 10.201.214.162`. Menu `6` → `[MQTT] Connected clientId=trabass-BK-001-g via GPRS`, telemetri 160 B dengan GPS fix 22 satelit dikirim lewat GPRS. Tidak ada `UNDER-VOLTAGE WARNING` lagi.
+- `m6_gprs_cmd_reactive.log`: command `UNLOCK` diterima **via GPRS** → `[OUTPUT] Relay=ON pin=LOW -> TERBUKA`, `[CMD] Eksekusi 'UNLOCK' selesai. state=UNLOCKED`; telemetri lanjutan `lock_state:false`. LOCK masuk via WiFi setelah probe memulihkan WiFi (transport balik WiFi setelah 15 dtk stabil).
+- `m6_failover_auto_extpower.log` (SSID sengaja salah, tanpa menu `6`): tepat 30 dtk `[NET] WiFi putus 30000 ms, failover ke GPRS`, `Radio dimatikan`, `SIM READY CSQ=13`, `Terdaftar, operator=TELKOMSEL`, `GPRS AKTIF IP=10.64.205.139`, `Transport -> GPRS`, `MQTT Connected ... via GPRS`. `UNLOCK` **dan** `LOCK` keduanya diterima via GPRS, relay ON→OFF, telemetri `lock_state:false` lalu `true`. WiFi probe gagal selama SSID salah, radio dimatikan lagi; loop tidak stall.
+- `m6_failover_extpower_full.log` (menu `6`, SSID salah): `GPRS AKTIF IP=10.66.68.165 CSQ=13`, MQTT via GPRS, `UNLOCK`/`LOCK` via GPRS, telemetri berurutan hingga uptime 138 dtk tanpa `gagal`.
+- `telemetry_logs` id **2286–2295** (20:59:11–20:59:51, koordinat `-7.770888,110.415103/105`) mencatat periode failover otomatis; id 2287–2288 `lock_state=0` sesuai UNLOCK via GPRS. Backend `/health` `mqtt_connected:true`, subscribe `trabass/+/telemetry`.
+- `m6_final_regression_ext.log`: firmware final dengan SSID asli, `WiFi=ya MQTT=ya state=MQTT_CONNECTED`, `publish=10 gagal=0`, GPS fix 23 satelit, state `LOCKED relay=OFF pin=1`. Compile/upload final sukses (flash 966.008 B, RAM 52.400 B).
+
+**Status M6A:** **PASS untuk T37–T40 dan T42**. Blocker lama (suplai VIN + tidak ada registrasi 2G) sudah hilang setelah adaptor 5 V/3 A dipasang: `CREG 0,1`, `CIFSR` memberi IP, MQTT/telemetri/command lewat GPRS terbukti, failover otomatis 30 dtk dan pemulihan WiFi (15 dtk stabil) terbukti di dua sesi. **T41 tetap PARTIAL** karena uji stabilitas belum dijalankan penuh 30 menit (baru ~3 menit kumulatif dengan 0 publish gagal). **Milestone 6 dapat dinyatakan selesai secara fungsional** dengan keterbatasan: T41 belum 30 menit, ACK perangkat belum ada, broker publik anonymous/TLS belum aktif, bunyi buzzer/LCD fisik belum dikonfirmasi agent.
+
+---
+
+### M6B — Integrasi alur bisnis end-to-end
 
 **Tujuan:** alur aplikasi berjalan dengan hardware.
 
@@ -315,7 +390,7 @@ flowchart TD
 Aturan pengisian:
 
 - `Actual` → output/log/screenshot nyata. **Dilarang** mengisi "berhasil" tanpa bukti.
-- `Status`: `PASS`, `FAIL`, `NOT RUN`, `BLOCKED`, `DEFERRED`, atau `REPORTED` (dilaporkan user, belum diverifikasi agent).
+- `Status`: `PASS`, `FAIL`, `NOT RUN`, `BLOCKED`, `DEFERRED`, `REPORTED` (dilaporkan user, belum diverifikasi agent), atau `RETIRED` (fitur dihapus/disupersede; bukti lama tetap arsip, tidak dijalankan ulang).
 
 ### 5.1 Baseline & lingkungan (M1)
 
@@ -354,7 +429,7 @@ Aturan pengisian:
 | T16 | `LOCK_AND_ALARM` | Timer habis | Action LOCK_AND_ALARM | Kunci + sirene 60 dtk | `[OUTPUT] Lock already TERKUNCI (idempoten)`, `[ALARM] ON selama 3000 ms`, auto-off, telemetri tetap `lock_state:true`. Default produksi 60 dtk diverifikasi di T14 | PASS (instrumented) |
 | T17 | `WARNING_BEEP` | Sisa ≤ 5 menit | Action WARNING_BEEP | 3 beep + LCD | `[OUTPUT] Warning beep mulai/selesai (3 pulse)`, `[LCD] Pesan 5000 ms: 'PERINGATAN' \| 'Ada gerakan menc'`. Bunyi fisik belum dikonfirmasi agent | PARTIAL |
 | T18 | `EXTEND_TIME` | Perpanjangan | Action + deadline | Deadline lokal update, LCD | `[CMD] EXTEND_TIME added_minutes=15 end_time=2026-11-19T09:30:00.000Z`, `[LCD] Pesan ... 'PERPANJANG' \| 'Ditambah 15 mnt'`. **Deadline lokal/NVS tidak diimplementasikan** sesuai keputusan M4 | PARTIAL |
-| T19 | `SEND_SMS` | Command SMS | Nomor aktif | SMS diterima < 30 dtk | M4: payload diterima → `[CMD] SEND_SMS -> PENDING_M5 (SMS tidak dikirim)`; SIM800L belum membalas `AT` | BLOCKED |
+| T19 | `SEND_SMS` | Command MQTT | Nomor aktif | SMS diterima < 30 dtk | Arsip M5: antrean diterima lalu dua attempt gagal (`AT tidak merespons`). M6: layanan SMS dihapus; command `SEND_SMS` diabaikan firmware | RETIRED |
 | T20 | Payment E2E | Midtrans sandbox | Settlement | Unlock otomatis | — | NOT RUN |
 | T21 | Timer expiry | Tunggu sewa habis | Sesi aktif | Lock + alarm + insiden | — | NOT RUN |
 | T22 | Geofence | Pindah koordinat | Di luar 5000 m | Insiden + alarm | Config diubah: pangkalan Kampus 1 `(-7.7626945,110.4095241)`, radius 5000 m. Alert `active=false` setelah restart; tidak ada violation baru. Uji koordinat jauh sintetis sengaja tidak dijalankan agar tidak membuat insiden/WA baru | PARTIAL (config verified) |
@@ -366,6 +441,18 @@ Aturan pengisian:
 | T28 | Heartbeat periodik (M2) | Boot normal, amati `mosquitto_sub` | `bike/telemetry/#` | Interval 5 dtk, payload valid | 8 heartbeat berurutan 5,0 dtk; `fw_version=1.0.0-m2`; RSSI -50…-60; `lock_state=true` | PASS |
 | T29 | Command diterima (M2) | Publish ke `bike/command/BK-001` | `{"action":"UNLOCK"}`, lalu `{"action":"LOCK"}` via `-f` | Callback mencatat, aktuator belum bergerak | `[MQTT] Command masuk 15 B`; `[CMD] Diterima: {action:UNLOCK}`; setelah reconnect: `17 B` + `{"action":"LOCK"}` (JSON valid) | PASS |
 | T30 | Admin command E2E (M4) | Dashboard admin | `FORCE_UNLOCK`, `FORCE_LOCK` | MQTT → eksekusi → telemetri | `POST /api/admin/bike-command` → `status:success`; `admin_command_logs` id 17/18 `SENT`; firmware `[CMD] Eksekusi 'UNLOCK'/'LOCK'`, `lock_state:false` lalu `true` | PASS |
+| T31 | Pra-cek SIM (M5) | Menu serial `6` | Modul aktif | `AT→OK`, `CPIN? READY`, `CSQ`, `CREG` terdaftar | Arsip M5: 5× `AT` tanpa balasan. Digantikan T37 | RETIRED |
+| T32 | SMS manual (M5) | Menu serial `7` | `NOMOR_TUJUAN` aktif | SMS tes diterima | Menu `7` dihapus; tidak dijalankan ulang | RETIRED |
+| T33 | Antrean penuh & non-blocking (M5) | 5× `SEND_SMS` QoS 1 cepat | `SMS_QUEUE_SIZE=4` | 4 diterima, ke-5 ditolak, telemetri 5 dtk | Arsip M5: `pending=1..4`, ke-5 ditolak, telemetri berlanjut. Antrean SMS dihapus | RETIRED |
+| T34 | Sanitasi payload (M5) | Payload 350 B, nomor `+62…`, non-ASCII | Teks ASCII maks 140 | Nomor `08…`, tanpa injeksi AT | Arsip M5: terbukti. Tidak relevan lagi tanpa SMS | RETIRED |
+| T35 | Failure path (M5) | `SEND_SMS` dengan modem mati | Timeout 2 dtk | Retry 2× lalu dibuang | Arsip M5: terbukti. Failure path GPRS menggantikan ini | RETIRED |
+| T36 | Diagnostik baud & regresi (M5) | Menu `8`, `n`, `AT`, `UNLOCK`/`LOCK` | Semua baud + state aman | Tidak ada balasan = modul mati | Arsip M5: terbukti. Menu `8` digantikan menu `0` (scan 32 kombinasi) | RETIRED |
+| T37 | Attach GPRS + IP (M6A) | Menu `6`, amati `PROBE→…→GET_IP` | APN `internet`, SIM aktif, cakupan 2G | `AT→OK`, `CPIN READY`, `CREG` terdaftar, `CIFSR` IP | `m6_extpower_check2.log`: `AT -> OK`, `+CPIN: READY`, `+CSQ: 14,0`, `+CREG: 0,1`, `+COPS: 0,0,"TELKOMSEL"`, `+CGATT: 1`, `+CIFSR -> 10.201.214.162`; `m6_failover_auto_extpower.log`: `GPRS AKTIF IP=10.64.205.139`. Riwayat `m6_long_registration.log` (`CREG 0,2`, `UNDER-VOLTAGE WARNING`) terjadi sebelum adaptor 5 V dipasang | PASS |
+| T38 | Telemetri via GPRS (M6A) | Putus WiFi > 30 dtk, publish telemetri | GPRS attached | Payload masuk backend | `m6_failover_auto_extpower.log`: telemetri 159–160 B `gps_fix:true`, 22–23 satelit dikirim via GPRS sampai uptime ~139 dtk; `telemetry_logs` id 2286–2295 (20:59:11–20:59:51, `-7.770888,110.415103/105`) termasuk `lock_state=0` saat UNLOCK. `/health` `mqtt_connected:true` | PASS |
+| T39 | Command downlink via GPRS (M6A) | Publish `trabass/BK-001/command` saat WiFi putus | GPRS attached | Firmware eksekusi + telemetri | `m6_failover_auto_extpower.log`: `UNLOCK` dan `LOCK` keduanya `Command masuk ... via GPRS` → `[OUTPUT] Relay=ON pin=LOW -> TERBUKA` lalu `Relay=OFF pin=HIGH -> TERKUNCI`, telemetri `lock_state:false` lalu `true`. `m6_gprs_cmd_reactive.log`: UNLOCK via GPRS PASS | PASS |
+| T40 | Failover WiFi→GPRS→WiFi (M6A) | SSID uji sengaja salah, lalu SSID asli | `WIFI_FAILOVER_AFTER_MS=30000` | Log transisi transport, kembali WiFi setelah 15 dtk | `m6_failover_auto_extpower.log`: tepat 30 dtk `WiFi putus 30000 ms, failover ke GPRS` → `Radio dimatikan` → `GPRS AKTIF` → `Transport -> GPRS` → MQTT via GPRS; `m6_gprs_cmd_reactive.log` / `m6_extpower_check2.log`: WiFi probe pulih → `[NET] Transport -> WIFI (WiFi pulih stabil)` setelah 15 dtk stabil, telemetri `gagal=0` | PASS |
+| T41 | Stabilitas 30 menit (M6A) | Boot normal 30 menit | Telemetri 5 dtk | Tidak stall, publish 0 gagal | `m6_extpower_check2.log` (~80 dtk), `m6_failover_extpower_full.log` (~140 dtk GPRS), `m6_failover_auto_extpower.log` (~110 dtk GPRS), `m6_final_regression_ext.log` (~57 dtk WiFi): seluruhnya `publish 0 gagal`, GPS/IMU tetap dibaca. 30 menit penuh belum dijalankan | PARTIAL |
+| T42 | Regresi aktuator/menu (M6A) | `UNLOCK`, `LOCK`, `n`, `o`, `9`, `0`, `a` | Firmware `1.0.0-gprs` | Aktuator/menu aman | `m6_final_regression_ext.log`: `n`/`o` merespons, `WiFi=ya MQTT=ya`, `state=LOCKED relay=OFF pin=1`, `publish=10 gagal=0`; `m6_uart_scan_correctpins.log`: menu `0` selesai tanpa menghentikan telemetri; `m6_cmd_wifi.log` (arsip) REGRESI PASS | PASS |
 
 ---
 
@@ -380,11 +467,11 @@ Integrasi dinyatakan selesai hanya jika:
 5. Unlock terjadi lewat pembayaran sandbox **atau** admin force unlock (disebut secara eksplisit).
 6. Timer habis mengunci + alarm.
 7. Geofence dan tamper memicu insiden + alarm.
-8. Wi-Fi/MQTT putus lalu pulih otomatis.
+8. Wi-Fi/MQTT putus lalu pulih otomatis, **atau** failover GPRS aktif bila WiFi tidak tersedia (M6A).
 9. Fitur existing backend/frontend tidak regressi.
 10. Semua test case yang relevan memiliki `Actual` dan `Status`.
 
-**Tidak termasuk DoD:** baterai nyata (`N/A`), ACK/retry command, timer lokal/NVS, TLS/MQTT auth. Semuanya dicatat sebagai keterbatasan.
+**Tidak termasuk DoD:** baterai nyata (`N/A`), ACK/retry command, timer lokal/NVS, TLS/MQTT auth, dan——sampai T37 `PASS`—pengiriman telemetri/command lewat GPRS. Semuanya dicatat sebagai keterbatasan. Topik `bike/telemetry/+`/`bike/command/+` sudah diganti `trabass/<id>/telemetry`/`trabass/<id>/command`; backend masih toleran membaca format lama.
 
 ---
 
@@ -395,11 +482,14 @@ Integrasi dinyatakan selesai hanya jika:
 | IP PC berubah (DHCP) | ESP32 gagal connect | DHCP reservation; `MQTT_BROKER_HOST` di `config.h` |
 | AP isolation Wi-Fi kampus | Device tidak bisa ke PC | Uji B04; fallback hotspot PC |
 | GPS tidak fix indoor | Telemetri dibuang backend | Patch M3 no-fix |
-| `delay()` pada `beep()`/`kirimSMS()` | Watchdog reset | State machine berbasis `millis()` |
+| `delay()` pada `beep()` / langkah AT TinyGSM | Watchdog reset | Aktuator dan attach GPRS memakai state machine berbasis `millis()`; satu langkah AT TinyGSM tetap bisa memblokir beberapa detik saat transisi (dokumentasikan) |
 | Relay salah polaritas | Kunci terbalik | Konfirmasi `RELAY_ON LOW` / `RELAY_OFF HIGH`; uji T12/T13 |
 | Alarm menyala terus | Gangguan | Auto-off 60 detik + `ALARM_OFF` |
 | `SENT` dianggap eksekusi | Status palsu | Verifikasi lewat telemetri berikutnya; ACK ditunda |
-| SIM800L tidak membalas `AT` (M2) | T19/M5 gagal | Cek TX/RX silang, GND bersama, 5 V kuat; uji ulang menu `6` sebelum M5 |
+| SIM800L tidak membalas `AT` (M2→M5→M6A) | T37 `BLOCKED` dulu | **Teratasi**: pin SIM ditukar ke 16/17 (GPS 26/27), VDD→3V3, baud dikunci 9600, adaptor 5 V/3 A terpasang. `AT→OK`, `CPIN READY`, `CIFSR` IP terbukti. Firmware tetap mematikan WiFi saat GPRS sebagai mitigasi bila suplai diputus |
+| SIM800L 2G-only | Cakupan GPRS dulu meragukan | **Teratasi di lokasi uji**: `+COPS: 0,0,"TELKOMSEL"`, `CREG 0,1`, `CGATT 1`, IP private diperoleh. Risiko tersisa tetap ada bila pindah lokasi tanpa cakupan 2G; modul 4G perlu dipertimbangkan untuk produksi |
+| Broker publik HiveMQ | Topik bisa dilihat pihak lain; tanpa auth/TLS | Namespace `trabass/<BIKE_ID>/…`; jangan kirim data sensitif. Untuk produksi: broker privat + TLS/MQTT auth (di luar DoD) |
+| Antrean command penuh saat GPRS | Command terbuang | 4 slot × 512 B, telemetri tetap jalan; ACK belum ada (M7) |
 | `telemetry_logs` tumbuh cepat | DB besar | Interval 5 dtk untuk demo; evaluasi throttling setelah M7 |
 | Kredensial bocor | Keamanan | `config.h` tidak di-commit; tidak dikirim lewat chat |
 

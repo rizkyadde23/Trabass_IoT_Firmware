@@ -3,10 +3,9 @@
  * ------------------------------------------------------------------
  * Perilaku sengaja dipertahankan sama dengan sketch_nov16a.ino asli:
  *   - tesGPS()  : blocking 5 detik (dipanggil manual).
- *   - tesSIM()  : beberapa AT dengan timeout pendek (manual).
- *   - kirimSMS(): hingga ~20 detik (manual).
  * Fungsi-fungsi ini TIDAK dipanggil dari loop() otomatis, sehingga
- * tidak mengganggu koneksi MQTT pada operasi normal.
+ * tidak mengganggu koneksi MQTT pada operasi normal. Tes SIM/SMS sudah
+ * dihapus di M6; diagnostik modem ada di menu '6'/'9'.
  */
 
 #include <Wire.h>
@@ -23,7 +22,6 @@
 extern LiquidCrystal_I2C lcd;
 extern TinyGPSPlus gps;
 extern HardwareSerial gpsSerial;
-extern HardwareSerial sim;
 extern void feedGPS();
 
 namespace {
@@ -43,24 +41,6 @@ void beep(int ms) {
     delayMicroseconds(250);
   }
   digitalWrite(BUZZER_PIN, LOW);
-}
-
-String kirimAT(const String &cmd, uint32_t timeout = 2000) {
-  while (sim.available()) sim.read();
-  sim.println(cmd);
-
-  String resp = "";
-  unsigned long start = millis();
-  while (millis() - start < timeout) {
-    while (sim.available()) resp += (char)sim.read();
-    if (resp.indexOf("OK") >= 0 || resp.indexOf("ERROR") >= 0) break;
-  }
-
-  resp.trim();
-  Serial.print("  >> ");
-  Serial.println(cmd);
-  Serial.println(resp.length() ? resp : "  (tidak ada balasan)");
-  return resp;
 }
 
 } // namespace
@@ -160,70 +140,6 @@ bool tesGPS() {
   return true;
 }
 
-bool tesSIM() {
-  Serial.println("[SIM800L] Tes...");
-  bool hidup = false;
-  for (int i = 0; i < 5; i++) {
-    if (kirimAT("AT", 1000).indexOf("OK") >= 0) {
-      hidup = true;
-      break;
-    }
-    delay(500);
-  }
-
-  if (!hidup) {
-    Serial.println("  GAGAL: modul tidak membalas (cek TX/RX, GND, 5V)");
-    return false;
-  }
-
-  kirimAT("ATE0");
-  bool simOk = kirimAT("AT+CPIN?").indexOf("READY") >= 0;
-  kirimAT("AT+CSQ");
-  String reg = kirimAT("AT+CREG?");
-  bool net = reg.indexOf(",1") >= 0 || reg.indexOf(",5") >= 0;
-  kirimAT("AT+CBC");
-
-  Serial.printf("  Kartu SIM: %s | Jaringan: %s\n",
-                simOk ? "OK" : "BERMASALAH",
-                net ? "TERDAFTAR" : "BELUM TERDAFTAR");
-  return simOk && net;
-}
-
-void kirimSMS() {
-  Serial.println("[SMS] Mengirim SMS tes...");
-  kirimAT("AT+CMGF=1");
-  kirimAT("AT+CSCA?");
-
-  while (sim.available()) sim.read();
-  sim.print("AT+CMGS=\"");
-  sim.print(NOMOR_TUJUAN);
-  sim.println("\"");
-
-  String resp = "";
-  unsigned long start = millis();
-  while (millis() - start < 5000) {
-    while (sim.available()) resp += (char)sim.read();
-    if (resp.indexOf('>') >= 0 || resp.indexOf("ERROR") >= 0) break;
-  }
-
-  Serial.println("  Balasan CMGS: " + resp);
-  if (resp.indexOf('>') < 0) {
-    Serial.println("  GAGAL: tidak ada prompt '>' (cek nomor/SIM/jaringan)");
-    return;
-  }
-
-  sim.print("Tes SIM800L dari ESP32 berhasil");
-  sim.write(26); // Ctrl+Z
-
-  resp = "";
-  start = millis();
-  while (millis() - start < SMS_SEND_TIMEOUT_MS) {
-    while (sim.available()) resp += (char)sim.read();
-    if (resp.indexOf("OK") >= 0 || resp.indexOf("ERROR") >= 0) break;
-  }
-  Serial.println(resp.length() ? resp : "  (tidak ada balasan)");
-}
-
 void i2cScan() {
   Serial.println("[I2C] Scan...");
   int found = 0;
@@ -245,14 +161,13 @@ void tesSemua() {
   tesBuzzer();
   bool rMPU = tesMPU();
   bool rGPS = tesGPS();
-  bool rSIM = tesSIM();
 
   Serial.println("\n========== RINGKASAN ==========");
   Serial.printf("LCD I2C    : %s\n", rLCD ? "OK" : "GAGAL");
   Serial.println("Buzzer     : dijalankan (cek bunyi)");
   Serial.printf("MPU6050    : %s\n", rMPU ? "OK" : "GAGAL");
   Serial.printf("GPS        : %s\n", rGPS ? "data masuk" : "GAGAL");
-  Serial.printf("SIM800L    : %s\n", rSIM ? "OK (SIM + jaringan)" : "GAGAL/BELUM SIAP");
+  Serial.println("GPRS       : cek menu '6' / status 'n'");
   Serial.println("Relay      : tes manual, ketik 3");
   Serial.println("===============================\n");
 
@@ -262,7 +177,7 @@ void tesSemua() {
     lcd.print(rMPU ? "MPU:OK " : "MPU:ERR ");
     lcd.print(rGPS ? "GPS:OK" : "GPS:ERR");
     lcd.setCursor(0, 1);
-    lcd.print(rSIM ? "SIM:OK " : "SIM:ERR ");
+    lcd.print("GPRS:menu6 ");
     lcd.print("Relay:cmd3");
   }
 }

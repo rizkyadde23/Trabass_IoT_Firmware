@@ -1,14 +1,14 @@
 /*
- * Trabass IoT - Modul konektivitas WiFi + MQTT
+ * Trabass IoT - Modul konektivitas WiFi + GPRS + MQTT (M6)
  * ------------------------------------------------------------------
  * Tanggung jawab:
- *   - Menjaga koneksi WiFi STA dan MQTT (non-blocking).
- *   - Subscribe topic command dan menaruh payload ke antrean.
- *   - Publish telemetri (payload disusun oleh modul telemetry).
+ *   - WiFi STA sebagai transport utama, GPRS TinyGSM sebagai cadangan.
+ *   - MQTT dua arah (telemetry publish + command subscribe) di kedua
+ *     transport dengan callback dan antrean yang sama.
  *   - Menandai event reconnect agar telemetri langsung dikirim ulang.
  *
  * Modul ini TIDAK menggerakkan aktuator. Eksekusi command adalah
- * tanggung jawab command_handler (Milestone 4).
+ * tanggung jawab command_handler.
  */
 
 #ifndef TRABASS_MQTT_LINK_H
@@ -29,6 +29,15 @@ bool wifiConnected();
 bool mqttConnected();
 LinkState state();
 const char *stateLabel();
+
+// Minta attach GPRS. Mematikan radio WiFi sementara karena aktivitas WiFi
+// terbukti mengganggu UART2 SIM800L bila suplai 5 V belum terpisah.
+void requestGprs();
+
+// Transport aktif dan status GPRS untuk menu serial.
+const char *transportLabel();
+bool gprsAttached();
+const char *gprsIp();
 
 // Info jaringan untuk menu serial.
 String ssid();

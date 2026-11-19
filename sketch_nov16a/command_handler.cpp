@@ -19,7 +19,9 @@
 
 namespace {
 
-constexpr size_t kCommandBufferSize = 192;
+// Payload SEND_SMS dari backend bisa ~204 B (pesan 140 char + nomor + action).
+// 512 B mengikuti MQTT_BUFFER_SIZE agar JSON tidak terpotong saat parsing.
+constexpr size_t kCommandBufferSize = 512;
 constexpr size_t kKeySize = 96;
 constexpr size_t kDedupeSlots = 4;
 
@@ -149,8 +151,9 @@ bool loop() {
                   added, (const char *)(doc["end_time"] | "-"));
 
   } else if (strcmp(action, "SEND_SMS") == 0) {
-    // M4 sengaja tidak menyentuh SIM800L. Eksekusi nyata di M5.
-    Serial.println("[CMD] SEND_SMS -> PENDING_M5 (SMS tidak dikirim).");
+    // M6: layanan SMS dihapus. UART2 dipakai penuh oleh GPRS/TinyGSM.
+    Serial.println("[CMD] SEND_SMS tidak didukung (firmware GPRS-only), diabaikan.");
+    dieksekusi = false;
 
   } else {
     Serial.printf("[CMD] Aksi '%s' tidak dikenal, diabaikan.\n", action);

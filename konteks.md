@@ -1,7 +1,7 @@
 # Konteks Proyek — Integrasi Trabass IoT (Firmware + Backend + Frontend)
 
 **Lokasi:** `d:\Code\ARDUINO\Praktikum IOT\Trabass-IoT-Firmware\konteks.md`
-**Tanggal analisis:** 2026-11-16
+**Tanggal analisis:** 2026-11-16 — **diperbarui:** 2026-11-19 (M6A: broker publik HiveMQ, GPRS menggantikan SMS)
 **Lingkup:** PC lokal, bike tunggal `BK-001` (asumsi awal)
 
 Dokumen ini berisi **fakta yang terverifikasi dari kode/konfigurasi/status service** serta asumsi, risiko, dan batasan yang harus diingat saat implementasi. Rencana kerja ada di `perencanaan.md`; peta folder ada di `struktur.md`.
@@ -67,29 +67,33 @@ flowchart LR
     end
 
     subgraph PC["PC Lokal — 10.20.226.246 (hotspot)"]
-        MQ[Mosquitto :1883]
         BE[Node.js Express :3000]
         MY[(MySQL :3306<br/>bicycle_security_db)]
         RD[(Redis :6379)]
         FE[React + Vite :5173]
     end
 
-    ESP <-->|WiFi 2.4 GHz + MQTT JSON| MQ
-    MQ <--> BE
+    HQ["HiveMQ publik<br/>broker.hivemq.com:1883"]
+
+    ESP <-->|WiFi 2.4 GHz (utama)<br/>MQTT JSON| HQ
+    SIM <-->|GPRS 2G (cadangan)<br/>APN internet, TinyGSM| HQ
+    HQ <--> BE
     BE <--> MY
     BE <--> RD
     FE <-->|REST polling 5s| BE
 
-    SIM -.->|SMS| HP[HP User/Admin]
     BE -.->|WA| FONNTE[Fonnte API]
     FE -.->|Pembayaran| MID[Midtrans Sandbox]
 ```
+
+> M6A: Mosquitto lokal masih berjalan untuk keperluan uji PC, tetapi firmware dan backend sudah memakai broker publik HiveMQ. SMS tidak ada lagi; `SIM` hanya untuk data GPRS. Topik firmware: `trabass/BK-001/telemetry`, `trabass/BK-001/command`, `trabass/BK-001/ack`, `trabass/BK-001/status`.
 
 **Prinsip data:**
 
 - Jalur device↔backend: MQTT.
 - Jalur UI↔backend: REST (polling 5 detik).
-- Jalur SMS: SIM800L di device, dipicu `SEND_SMS`/tamper offline.
+- Jalur data seluler: SIM800L dipakai untuk **GPRS** (APN `internet`) sebagai cadangan MQTT saat WiFi putus. Layanan SMS dihapus di M6A; `SEND_SMS` diabaikan firmware.
+- Notifikasi WhatsApp tetap dari backend → Fonnte; gagal WA hanya dicatat (tidak ada fallback SMS lagi).
 - Jalur WA: backend → Fonnte (bergantung token).
 - Jalur pembayaran: frontend ↔ Midtrans Snap, diverifikasi backend.
 
@@ -103,10 +107,12 @@ flowchart LR
 |---|---|---:|---|
 | I2C SDA | GPIO 21 | Bus I2C | Bersama LCD + MPU6050 |
 | I2C SCL | GPIO 22 | Bus I2C | |
-| GPS RX (ESP32 terima) | GPIO 16 | UART1 RX ← TX GPS | `gpsSerial.begin(9600, SERIAL_8N1, 16, 17)` |
-| GPS TX (ESP32 kirim) | GPIO 17 | UART1 TX → RX GPS | |
-| SIM800L RX | GPIO 26 | UART2 RX ← TXD SIM | `sim.begin(9600, SERIAL_8N1, 26, 27)` |
-| SIM800L TX | GPIO 27 | UART2 TX → RXD SIM | Perhatikan level 2.8 V |
+| GPS RX (ESP32 terima) | GPIO 26 | UART1 RX ← TX GPS | `gpsSerial.begin(9600, SERIAL_8N1, 26, 27)` |
+| GPS TX (ESP32 kirim) | GPIO 27 | UART1 TX → RX GPS | User sudah menukar kabel GPS ke 26/27 |
+| TXD **modul SIM800L** → ESP32 RX | GPIO 16 | UART2 RX ← TXD modul | `simSerial.begin(9600, SERIAL_8N1, 16, 17)` di `gprs_link.cpp`; mapping ini terbukti `AT→OK` |
+| RXD **modul SIM800L** ← ESP32 TX | GPIO 17 | UART2 TX → RXD modul | Level logika modul 2.8 V; GND **harus** bersama ESP32 |
+| VDD EVB SIM800L | 3V3 ESP32 | Referensi level | Pin VDD terpisah dari pin 5V daya; sudah terhubung 3V3 |
+| Suplai SIM800L | 5 V eksternal ≥ 2 A | Daya | **Sudah dipasang adaptor 5 V/3 A** pada uji final (GND bersama ESP32, VDD tetap 3V3). 5 V dari VIN ESP32 dulu memicu `UNDER-VOLTAGE WARNING`; kapasitor 1000 µF/16 V hanya peredam burst, bukan sumber |
 | Relay | GPIO 4 | Output digital | **Aktif LOW** |
 | Buzzer | GPIO 19 | Output digital | Baseline toggle ~2 kHz |
 | VCC/GND | 3V3/5V/GND | Daya | Sesuai kebutuhan tiap modul |
@@ -145,11 +151,14 @@ flowchart LR
 | `3` | Toggle relay | Manual |
 | `4` | Baca MPU6050 5× | Acc/Gyro/Suhu |
 | `5` | Status GPS 5 detik | Fix + satelit |
-| `6` | Tes SIM800L | AT, CPIN, CSQ, CREG, CBC |
-| `7` | Kirim SMS tes | Perlu nomor aktif |
+| `6` | Minta attach GPRS / lihat status modem | AT → CPIN → CSQ → CREG → APN → IP (menu `0` untuk diagnostik) |
+| `9` | Swap mapping RX/TX SIM800L saat runtime | `16/17` ↔ `17/16`, lalu kirim `AT` |
+| `0` | Scan UART SIM | 2 mapping × 8 baud × CR/CRLF |
 | `s` | Scan I2C | Cek `0x27`/`0x68` |
 | `h` | Bantuan | Daftar perintah |
-| `AT...` | Forward ke SIM800L | Balasan ke Serial |
+| `AT...` | AT mentah ke SIM800L | Balasan lewat `gprs_link::debugAt()` |
+| `n` | Status jaringan | Transport aktif, IP WiFi/GPRS, CSQ, counter GPRS |
+| `~7`, `~8` | SMS / diagnostik baud lama | **Dihapus di M6A** |
 
 ---
 
@@ -161,12 +170,12 @@ flowchart LR
 - Runtime: Node.js, Express 5, CommonJS
 - Dependensi inti: `mysql2`, `redis`, `mqtt`, `jsonwebtoken`, `midtrans-client`, `haversine-distance`, `axios`
 - Entry: `src/app.js` (`/api`, `/health`)
-- MQTT: `src/config/mqtt.js`, subscribe `bike/telemetry/+`
-- Env: `MQTT_BROKER_URL=mqtt://127.0.0.1:1883`, `DB_NAME=bicycle_security_db`
+- MQTT: `src/config/mqtt.js`, subscribe `trabass/+/telemetry` (format lama `bike/telemetry/+` tidak disubscribe lagi, tetapi masih dibaca oleh `handleTelemetry` bila masuk antre)
+- Env: `MQTT_BROKER_URL=mqtt://broker.hivemq.com:1883`, `DB_NAME=bicycle_security_db`
 
 ### 4.2 Kontrak MQTT existing
 
-**Telemetry uplink:** `bike/telemetry/{bike_id}`
+**Telemetry uplink:** `trabass/{bike_id}/telemetry` (M6A). Format lama `bike/telemetry/{bike_id}` masih diterima `handleTelemetry` untuk data yang tersisa di broker.
 
 ```json
 {
@@ -190,7 +199,7 @@ flowchart LR
 
 Field tambahan aman: `gps_fix`, `satellites`, `uptime_ms`, `fw_version`, `alarm_active` — diabaikan backend.
 
-**Command downlink:** `bike/command/{bike_id}`
+**Command downlink:** `trabass/{bike_id}/command` (M6A; QoS 1). Semua pengirim command di backend sudah memakai topik ini.
 
 | Action | Payload contoh | Pemicu utama |
 |---|---|---|
@@ -201,9 +210,9 @@ Field tambahan aman: `gps_fix`, `satellites`, `uptime_ms`, `fw_version`, `alarm_
 | `LOCK_AND_ALARM` | `{"action":"LOCK_AND_ALARM"}` | Sewa habis |
 | `WARNING_BEEP` | `{"action":"WARNING_BEEP","message":"..."}` | Sisa ≤ 5 menit |
 | `EXTEND_TIME` | `{"action":"EXTEND_TIME","added_minutes":15,"end_time":"...Z"}` | Perpanjangan |
-| `SEND_SMS` | `{"action":"SEND_SMS","target_phone":"...","message":"..."}` | Fallback WA gagal |
+| `SEND_SMS` | — | **Dihapus M6A**: tidak dipublish lagi; firmware mengabaikan bila diterima |
 
-Field opsional lain yang dipahami firmware M4: `timestamp` (kunci dedupe), `message` (LCD/peringatan), `duration_ms` (durasi alarm, dibatasi `ALARM_MAX_DURATION_MS`). Backend mengirim `timestamp` untuk sebagian besar command; `notificationService` mengirim `target_phone` untuk `SEND_SMS`.
+Field opsional lain yang dipahami firmware M4: `timestamp` (kunci dedupe), `message` (LCD/peringatan), `duration_ms` (durasi alarm, dibatasi `ALARM_MAX_DURATION_MS`). Backend mengirim `timestamp` untuk sebagian besar command. `notificationService` kini hanya mencatat log saat WA gagal (tanpa `target_phone`/`SEND_SMS`).
 
 ### 4.3 Database (tabel relevan)
 
@@ -222,8 +231,10 @@ Field opsional lain yang dipahami firmware M4: `timestamp` (kunci dedupe), `mess
 | Telemetri tanpa `lat/lng` dibuang | Baterai/IMU/lock hilang saat indoor | **Patch M3** di `telemetryController.js` |
 | `timerService`/`paymentController` bisa `hSet` tanpa koordinat | `has_live_location` salah | Guard live hash parsial |
 | `SENT` ≠ dieksekusi | Status palsu | Verifikasi lewat telemetri; ACK ditunda |
-| `SEND_SMS` via MQTT bukan fallback sejati | Offline → SMS tidak jalan | Opsional SMS lokal saat tamper + offline |
-| Broker anonymous tanpa TLS | Risiko LAN | Diterima lokal; produksi perlu auth+TLS |
+| `SEND_SMS` via MQTT bukan fallback sejati | Offline → notifikasi WA tidak jalan | M6A menghapus SMS; SIM800L dipakai GPRS. WA gagal hanya dicatat di log backend |
+| Pangkalan di DB berbeda dengan `.env` | Alert geofence palsu | Ditemukan 2026-11-19: `app_settings` masih `(-7.773512,110.385411,2000)`. Sudah di-update ke `(-7.7626945,110.4095241,5000)` + backend di-restart; alert lama `active=false` |
+| Broker publik anonymous tanpa TLS | Topik bisa dilihat pihak lain | Namespace `trabass/<id>/…`; produksi perlu broker privat + auth/TLS |
+| SIM800L tidak merespons `AT` | Dulu T37 `BLOCKED` | **Teratasi**: pin SIM 16/17 + VDD 3V3, baud 9600, adaptor 5 V/3 A. `AT→OK`, `CIFSR` IP; menu `0`/`9` tetap tersedia untuk diagnosis lapangan |
 | `telemetry_logs` cepat besar (±17k/hari @5s) | Storage | Evaluasi throttling setelah M7 |
 | `ALARM_ON` tidak auto-OFF | Sirene terus | **Sudah diatasi M4**: auto-off 60 s + `ALARM_OFF`; durasi command dibatasi `ALARM_MAX_DURATION_MS` |
 
@@ -236,7 +247,7 @@ Field opsional lain yang dipahami firmware M4: `timestamp` (kunci dedupe), `mess
 - API: `VITE_API_URL` = `http://localhost:3000/api`, polling 5 detik
 - Komponen relevan: `BatteryGauge.jsx`, `ImuMonitorPanel.jsx`, `FleetMap.jsx`, `useAdminBikes.js`, `useAdminBikeDetail.js`, `useBikeCommands.js`, `fleetTelemetry.js`
 - Threshold stale: 30 detik
-- **Tidak ada perubahan frontend untuk baseline M1–M4.**
+- **Tidak ada perubahan frontend untuk baseline M1–M5.**
 
 Jika PWA dibuka dari HP: set `VITE_API_URL` ke IP LAN PC dan jalankan Vite dengan `--host`.
 
@@ -244,9 +255,9 @@ Jika PWA dibuka dari HP: set `VITE_API_URL` ke IP LAN PC dan jalankan Vite denga
 
 ## 6. Kontrak telemetri final (firmware → backend)
 
-**Topic:** `bike/telemetry/BK-001` (publish **QoS 0**, retain false)
+**Topic:** `trabass/BK-001/telemetry` (publish **QoS 0**, retain false; M6A). Backend subscribe `trabass/+/telemetry`. Topik lama `bike/telemetry/BK-001` masih diterima oleh `handleTelemetry` bila ada sisa pesan.
 
-> **Batasan PubSubClient v2.8:** library hanya mengirim publish QoS 0. Backend tetap subscribe dengan QoS 0 sehingga tidak ada negosiasi turun yang menggagalkan pengiriman. Untuk LAN lokal ini diterima; QoS 1 end-to-end butuh library/MQTT client lain.
+> **Batasan PubSubClient v2.8:** library hanya mengirim publish QoS 0. Backend tetap subscribe dengan QoS 0 sehingga tidak ada negosiasi turun yang menggagalkan pengiriman. Untuk demo lokal ini diterima; QoS 1 end-to-end butuh library/MQTT client lain. Subscribe command tetap QoS 1.
 
 **Heartbeat M2 (historis; tidak dipakai lagi sejak M3):**
 
@@ -321,7 +332,7 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
 
 ## 7. Kontrak command final (backend → firmware)
 
-**Topic:** `bike/command/BK-001` (subscribe QoS 1)
+**Topic:** `trabass/BK-001/command` (subscribe QoS 1; M6A). Telemetri publish ke `trabass/BK-001/telemetry` (QoS 0), status `trabass/BK-001/status`, ack `trabass/BK-001/ack` (M7).
 
 | Action | Efek firmware | LCD | Buzzer | Catatan |
 |---|---|---|---|---|
@@ -332,20 +343,25 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
 | `LOCK_AND_ALARM` | Lock + sirene | `ALARM` | ON | Timer habis |
 | `WARNING_BEEP` | 3 beep | `PERINGATAN` | Beep | Non-blocking |
 | `EXTEND_TIME` | Tampilkan `added_minutes`/`end_time` di LCD | `PERPANJANG` | — | **Tidak** menyimpan deadline lokal/NVS |
-| `SEND_SMS` | Log `PENDING_M5` saja | — | — | Tidak mengirim SMS sampai M5 |
+| `SEND_SMS` | Log `[CMD] SEND_SMS tidak didukung (firmware GPRS-only), diabaikan` | — | — | **RETIRED M6A**; UART2 dipakai TinyGSM |
 | Unknown | Log + abaikan | — | — | State aman |
 
-**Aturan eksekusi (terimplementasi M4):**
+**Aturan eksekusi (terimplementasi M4, disesuaikan M6A):**
 
 - Parse aman ArduinoJson; action tidak dikenal → log + abaikan.
-- Callback MQTT hanya menyalin payload ke antrean; eksekusi di `loop()`.
-- Tidak ada `delay()` di jalur `outputs::loop()`/`command_handler::loop()`.
-- Setelah command dieksekusi, `telemetry::publishNow()` langsung mempublish telemetri (QoS 0).
+- Callback MQTT (WiFi **atau** GPRS) hanya menyalin payload ke antrean bersama 4 slot × 512 B; eksekusi di `loop()`.
+- Tidak ada `delay()` di jalur `outputs::loop()`/`command_handler::loop()`; langkah AT TinyGSM bisa memblokir beberapa detik hanya saat transisi attach.
+- Setelah command dieksekusi, `telemetry::publishNow()` langsung mempublish telemetri (QoS 0) lewat transport aktif.
 - Dedupe 4 slot: kunci `action|timestamp`, window `COMMAND_DEDUPE_WINDOW_MS` (default 3000 ms).
 - Setter state absolut: `LOCK`/`UNLOCK` idempoten; `ALARM_ON` berulang tidak memperpanjang alarm yang aktif.
-- `outputs` adalah pemilik tunggal relay/buzzer/LCD; menu tes serial `3` kini delegate ke `outputs::setLock()`.
+- `outputs` adalah pemilik tunggal relay/buzzer/LCD; menu tes serial `3` delegate ke `outputs::setLock()`.
+- `gprs_link` adalah pemilik tunggal UART2/SIM800L; menu `6`/`9`/`0` dan perintah `AT...` memakai `debugAt()`/`swapPins()`/`scanUart()` dari modul itu.
 
 **Status M4:** selesai untuk state machine dan logging. Bukti ada di `perencanaan.md` T12–T18/T24/T30. Bunyi fisik dan tampilan LCD perlu konfirmasi manual; agent hanya membuktikan pin, log, dan telemetri.
+
+**Status M5 (arsip):** perangkat lunak pernah terverifikasi (antrean 4, sanitasi, retry 2×, non-blocking — T33–T36), lalu **disupersede M6A**. SMS dihapus; T19/T31–T36 `RETIRED`.
+
+**Status M6A:** firmware `1.0.0-gprs` tercompile/ter-upload (flash 966.008 B, RAM 52.400 B). Setelah pin SIM ditukar (16/17, GPS 26/27), baud dikunci 9600, dan adaptor 5 V/3 A dipasang, GPRS **PASS**: `AT→OK`, `CPIN READY`, `CSQ 13–19`, `CREG 0,1`, `COPS "TELKOMSEL"`, `CGATT 1`, `CIFSR` IP. `m6_failover_auto_extpower.log` membuktikan failover otomatis 30 dtk → GPRS → MQTT → telemetri → command `UNLOCK`/`LOCK` via GPRS; `telemetry_logs` id 2286–2295 menerima payload GPRS. Pemulihan WiFi setelah 15 dtk stabil juga terbukti. T37–T40 PASS, T42 PASS, **T41 PARTIAL** (uji 30 menit penuh belum dijalankan). Milestone 6 **selesai secara fungsional** dengan keterbatasan di bawah. Bukti lengkap di `perencanaan.md` T37–T42.
 
 ---
 
@@ -362,10 +378,12 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
 | Menu tes serial dipertahankan di balik flag | Aktif |
 | GPS diuji outdoor untuk T05/T22 | Aktif |
 | Pangkalan = Kampus 1 UPN Veteran Yogyakarta `(-7.7626945, 110.4095241)`, radius 5000 m | Aktif sejak M4; menggantikan pangkalan lama `(-7.773512, 110.385411)` / 500 m |
-| SIM800L punya SIM aktif + pulsa untuk T19 | **Belum dikonfirmasi** → T19 BLOCKED |
+| SIM800L v2 EVB self-power, tanpa PWRKEY | Aktif (user); `SIM_PWRKEY_PIN` tidak dipakai |
+| SIM by.u/Telkomsel kuota internet aktif, APN `internet` | **Terbukti**: `CPIN READY`, `COPS "TELKOMSEL"`, `CREG 0,1`, `CGATT 1`, `CIFSR` IP |
+| TXD modul → GPIO16, RXD modul ← GPIO17, VDD → 3V3 | **Terbukti** `AT→OK` dan `+IPR: 9600` setelah pin ditukar user |
 | Midtrans sandbox valid untuk T20 | **Belum diverifikasi** → substitusi admin unlock |
 | DHCP reservation `10.20.226.246` | Disarankan, belum dikonfirmasi; IP hotspot bisa berubah |
-| LWT `bike/status/BK-001` | **Nonaktif di M2** (`MQTT_ENABLE_LWT 0`), topik sudah disiapkan |
+| LWT `trabass/BK-001/status` | **Nonaktif** (`MQTT_ENABLE_LWT 0`), topik sudah disiapkan |
 
 ### 8.2 Batasan fase lokal (diketahui dan diterima)
 
@@ -384,14 +402,24 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
 - **Resolusi TAMPER otomatis** (`TAMPER_ALERT_RESET_SECONDS=120`) hanya dieksekusi pada jalur kondisi normal. Selama geofence masih violated, `handleTelemetry` return lebih awal sehingga insiden TAMPER tetap `ACTIVE` sampai ada payload unlock. Perilaku ini sudah ada sebelum patch M3 dan **sengaja tidak dipatch** di M4.
 - **M4 — bunyi buzzer / tampilan LCD** belum dikonfirmasi secara fisik oleh agent. Bukti yang tersedia: perubahan pin, state machine, log `[ALARM]`/`[OUTPUT]`/`[LCD]`, dan telemetri.
 - **M4 — `EXTEND_TIME` tidak menyimpan deadline lokal/NVS**, hanya menampilkan pesan LCD dan mencatat payload. Auto-lock saat offline tetap ditunda.
-- **M4 — `SEND_SMS` hanya `PENDING_M5`**; SIM800L tidak disentuh (T19 tetap `BLOCKED`).
-- **M4 — tidak ada ACK command**; `SENT` di `admin_command_logs` hanya berarti diterima broker. Eksekusi dibuktikan lewat telemetri berikutnya, bukan ACK device.
+- **M4/M5 — `SEND_SMS` adalah riwayat**; M6A sudah menghapus seluruh layanan SMS (T19/T31–T36 `RETIRED`).
+- **M6A — akar `AT` kosong sudah ditemukan:** pin SIM semula tertukar dengan GPS (26/27). Setelah ditukar (SIM 16/17, GPS 26/27), `AT→OK`. Modul semula autobaud (`+IPR:0`) dan sudah dikunci 9600. `AT` masih terganggu bila WiFi aktif sementara 5 V modem diambil dari VIN ESP32; firmware kini mematikan WiFi saat GPRS dicoba.
+- **M6A — suplai 5 V sudah dipisah**: adaptor 5 V/3 A terpasang; `UNDER-VOLTAGE WARNING` tidak muncul lagi pada uji final. Kapasitor 1000 µF/16 V tetap dipertahankan sebagai peredam burst.
+- **M6A — registrasi jaringan terbukti di lokasi uji**: `COPS "TELKOMSEL"`, `CREG 0,1`, `CGATT 1`, IP `10.x.x.x`. Risiko tersisa: cakupan 2G bersifat lokasional; bila pindah areas tanpa 2G, perlu modul 4G.
+- **M6A — T41 belum 30 menit penuh**: total uji stabil ~3–4 menit dengan `publish 0 gagal`; uji endurance 30 menit masih perlu dijadwalkan bila ingin status `PASS` penuh.
+- **M6A — TinyGSM bisa memblokir loop beberapa detik** saat `gprsConnect()`/perintah AT. Transisi dipecah per langkah dengan `millis()`, tetapi bukan hard real-time.
+- **M6A — broker publik** dipakai supaya GPRS bisa reach broker; anonymous, tanpa TLS, namespace `trabass/<id>/`.
+- **M4/M6A — tidak ada ACK command**; `SENT` di `admin_command_logs` hanya berarti diterima broker. Eksekusi dibuktikan lewat telemetri berikutnya, bukan ACK device.
+- **M6A — kegagalan WA tidak ada fallback SMS lagi**; hanya log `[WA GAGAL]`.
 
 ### 8.3 Yang harus diisi user di `config.h`
 
 - `WIFI_SSID`, `WIFI_PASSWORD` (2.4 GHz)
-- `MQTT_BROKER_HOST` jika IP PC berubah
-- `NOMOR_TUJUAN` untuk tes SMS manual
+- `MQTT_BROKER_HOST` / `MQTT_BROKER_PORT` (default `broker.hivemq.com:1883`)
+- `GPRS_APN`, `GPRS_USER`, `GPRS_PASSWORD` (default by.u `internet`, kosong)
+- `SIM_RX_PIN` / `SIM_TX_PIN` / `SIM_BAUD` (default `16`/`17`/`9600`; menu `9` untuk swap saat uji)
+- `WIFI_FAILOVER_AFTER_MS` / `WIFI_RESTORE_STABLE_MS` / `GPRS_WIFI_PROBE_MS` (default `30000`/`15000`/`30000`)
+- `NOMOR_TUJUAN` **sudah dihapus** (tidak ada SMS)
 
 > **Jangan** mengirim kredensial di chat. Isi langsung di file lokal.
 
@@ -403,12 +431,16 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
 |---|---|
 | Firmware root | `d:\Code\ARDUINO\Praktikum IOT\Trabass-IoT-Firmware` |
 | Sketch aktif | `...\sketch_nov16a\sketch_nov16a.ino` |
+| Tautan GPRS | `...\sketch_nov16a\gprs_link.h/.cpp` |
+| MQTT dual transport | `...\sketch_nov16a\mqtt_link.h/.cpp` |
 | Baseline | `...\baseline\sketch_nov16a_baseline\` |
 | Backend root | `d:\Code\Javascript\Trabass-IoT-Backend` |
 | Telemetry controller | `...\src\controllers\telemetryController.js` |
 | MQTT config backend | `...\src\config\mqtt.js` |
 | Bike command service | `...\src\services\bikeCommandService.js` |
 | Timer service | `...\src\services\timerService.js` |
+| Payment controller | `...\src\controllers\paymentController.js` |
+| Notification service | `...\src\services\notificationService.js` |
 | Schema DB | `...\schema.sql` |
 | Mosquitto config | `...\mosquitto.conf` |
 | Frontend root | `d:\Code\Javascript\Trabass-IoT-Frontend` |

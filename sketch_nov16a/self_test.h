@@ -6,8 +6,8 @@
  * hanya jika ENABLE_SERIAL_TEST_MENU = 1 dan hanya saat user mengetik
  * perintah, bukan otomatis saat boot.
  *
- * Objek hardware (lcd, gps, gpsSerial, sim) dimiliki oleh .ino dan
- * diakses lewat extern agar tidak terjadi duplikasi definisi.
+ * Objek hardware (lcd, gps, gpsSerial) dimiliki oleh .ino dan diakses
+ * lewat extern. UART2/SIM800L dimiliki gprs_link, bukan modul ini.
  */
 
 #ifndef TRABASS_SELF_TEST_H
@@ -22,8 +22,6 @@ void tesBuzzer();
 void toggleRelay();
 bool tesMPU();
 bool tesGPS();
-bool tesSIM();
-void kirimSMS();
 void i2cScan();
 void tesSemua();
 

@@ -14,15 +14,21 @@
 // Catatan: nama anggota sengaja CamelCase karena PubSubClient
 // mendefinisikan macro MQTT_CONNECTED/MQTT_DISCONNECTED, dll.
 enum class LinkState : uint8_t {
-  Offline = 0,        // WiFi belum terhubung
+  Offline = 0,        // WiFi/GPRS belum terhubung
   WifiConnecting,     // sedang mencoba/menunggu WiFi
   WifiConnected,      // WiFi siap, MQTT belum
-  MqttConnected,      // siap publish/subscribe
+  MqttConnected,      // siap publish/subscribe lewat WiFi
+  GprsAttaching,      // WiFi putus, sedang attach GPRS
+  GprsConnected,      // GPRS aktif, MQTT belum
+  MqttGprsConnected,  // siap publish/subscribe lewat GPRS
 };
 
 struct LinkStats {
   uint32_t wifiAttempts = 0;
   uint32_t wifiConnects = 0;
+  uint32_t gprsAttempts = 0;
+  uint32_t gprsConnects = 0;
+  uint32_t gprsFailures = 0;
   uint32_t mqttAttempts = 0;
   uint32_t mqttConnects = 0;
   uint32_t publishCount = 0;

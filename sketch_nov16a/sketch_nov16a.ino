@@ -1,6 +1,6 @@
 /*
   Trabass IoT - Security System Sepeda Sewa (ESP32)
-  Milestone 4: telemetri + command downlink & aktuator
+  Milestone 6: telemetri + command downlink + aktuator + MQTT via GPRS
 
   Arsitektur file:
     sketch_nov16a.ino  -> orkestrasi setup()/loop() + menu serial
@@ -9,9 +9,10 @@
     battery_sensor.*   -> stub (ENABLE_BATTERY_SENSOR 0)
     outputs.*          -> pemilik relay, buzzer, LCD (state absolut)
     command_handler.*  -> parse JSON, dispatch command, publish telemetri
+    gprs_link.*        -> TinyGSM SIM800L, attach GPRS APN internet (M6)
     telemetry.*        -> builder payload + publish periodik
-    mqtt_link.*        -> WiFi/MQTT, reconnect, antrean command
-    self_test.*        -> tes komponen baseline (LCD, buzzer, relay, MPU, GPS, SIM, SMS)
+    mqtt_link.*        -> WiFi utama + GPRS cadangan, MQTT, antrean command
+    self_test.*        -> tes komponen baseline (LCD, buzzer, relay, MPU, GPS, GPRS)
     config.h           -> konfigurasi lokal (meng-include config.example.h)
 
   Komponen: LCD I2C, MPU6050, GPS NEO-6M, SIM800L, Relay (solenoid), Buzzer.
@@ -29,17 +30,19 @@
     3      = toggle relay (solenoid)
     4      = baca MPU6050 (5x)
     5      = status GPS (tunggu 5 detik)
-    6      = tes SIM800L (AT, SIM, sinyal, registrasi)
-    7      = kirim SMS tes
+    6      = minta attach GPRS / lihat status modem
+    9      = tukar mapping RX-TX SIM800L saat runtime (swap test)
     s      = scan I2C
     h      = bantuan
     AT...  = perintah AT langsung ke SIM800L (contoh: AT+CSQ)
 
-  Catatan M4:
+  Catatan M6:
     - tesSemua() TIDAK dijalankan otomatis saat boot.
     - Telemetri dikirim tiap TELEMETRY_INTERVAL_MS (default 5 dtk),
       segera setelah MQTT reconnect, dan setelah command dieksekusi.
-    - Command MQTT diparse/didispatch oleh command_handler ke outputs.
+    - WiFi adalah transport utama; setelah WiFi putus > 30 dtk, MQTT
+      otomatis pindah ke GPRS (APN internet) memakai TinyGSM.
+    - SMS sudah dihapus; UART2 dimiliki penuh oleh gprs_link.
     - Alarm otomatis mati; reboot selalu dalam keadaan terkunci.
 */
 
@@ -54,6 +57,7 @@
 #include "imu_sensor.h"
 #include "mqtt_link.h"
 #include "outputs.h"
+#include "gprs_link.h"
 #include "self_test.h"
 #include "telemetry.h"
 
@@ -63,7 +67,7 @@
 LiquidCrystal_I2C lcd(LCD_ADDR, 16, 2);
 TinyGPSPlus gps;
 HardwareSerial gpsSerial(1);
-HardwareSerial sim(2);
+// UART2 (SIM800L) dimiliki oleh gprs_link.cpp, bukan di sini.
 
 static char serialBuf[96];
 static size_t serialLen = 0;
@@ -90,10 +94,10 @@ static void bantuan() {
   Serial.println("Perintah:");
   Serial.println("  n=jaringan+sensor | o=aktuator | m=publish telemetri | t=payload");
 #if ENABLE_SERIAL_TEST_MENU
-  Serial.println("  a=semua | 1=LCD | 2=buzzer | 3=relay | 4=MPU | 5=GPS | 6=SIM | 7=SMS");
-  Serial.println("  s=scan I2C | h=bantuan | AT...=langsung ke SIM800L");
+  Serial.println("  a=semua | 1=LCD | 2=buzzer | 3=relay | 4=MPU | 5=GPS");
+  Serial.println("  6=GPRS attach | 9=swap RX/TX | 0=scan UART SIM | s=scan I2C | h=bantuan");
 #else
-  Serial.println("  h=bantuan | AT...=langsung ke SIM800L");
+  Serial.println("  h=bantuan | 9=swap RX/TX | 0=scan UART SIM | AT...=langsung SIM800L");
 #endif
   Serial.println();
 }
@@ -137,6 +141,17 @@ static void printNetworkStatus() {
   } else {
     Serial.println("[SENSOR] Baterai=N/A (sensor belum terpasang)");
   }
+
+  Serial.printf("[NET] transport=%s GPRS=%s state=%s IP=%s CSQ=%d\n",
+                mqtt_link::transportLabel(),
+                mqtt_link::gprsAttached() ? "attached" : "idle",
+                gprs_link::stateLabel(),
+                mqtt_link::gprsIp(),
+                gprs_link::csq());
+  Serial.printf("[NET] gprsAttempt=%lu gprsGagal=%lu pin=%s\n",
+                (unsigned long)s.gprsAttempts,
+                (unsigned long)s.gprsFailures,
+                gprs_link::pinLabel());
 }
 
 static void printOutputStatus() {
@@ -153,9 +168,11 @@ static void printOutputStatus() {
 static void handleLine(const char *line) {
   if (line == nullptr || line[0] == '\0') return;
 
-  // Perintah AT diteruskan apa adanya ke SIM800L.
+  // AT mentah lewat gprs_link. Tidak ada antrean SMS lagi.
   if (strncmp(line, "AT", 2) == 0 || strncmp(line, "at", 2) == 0) {
-    sim.println(line);
+    char resp[160];
+    gprs_link::debugAt(line, resp, sizeof(resp), 1500);
+    Serial.printf("[SIM] %s -> %s\n", line, resp[0] != '\0' ? resp : "(kosong)");
     return;
   }
 
@@ -164,6 +181,12 @@ static void handleLine(const char *line) {
     case 'o': printOutputStatus(); break;
     case 'm': telemetry::publishNow(); break;
     case 't': telemetry::printPayload(); break;
+    case '9':
+      gprs_link::swapPins();
+      break;
+    case '0':
+      gprs_link::scanUart();
+      break;
 #if ENABLE_SERIAL_TEST_MENU
     case 'a': self_test::tesSemua(); break;
     case '1': self_test::tesLCD(); break;
@@ -171,8 +194,13 @@ static void handleLine(const char *line) {
     case '3': self_test::toggleRelay(); break;
     case '4': self_test::tesMPU(); break;
     case '5': self_test::tesGPS(); break;
-    case '6': self_test::tesSIM(); break;
-    case '7': self_test::kirimSMS(); break;
+    case '6':
+      Serial.printf("[GPRS] state=%s attached=%s -> %s\n",
+                    gprs_link::stateLabel(),
+                    gprs_link::attached() ? "ya" : "tidak",
+                    gprs_link::attached() ? "sudah aktif" : "attach diminta");
+      mqtt_link::requestGprs();
+      break;
     case 's': self_test::i2cScan(); break;
 #endif
     case 'h': bantuan(); break;
@@ -215,7 +243,7 @@ void setup() {
   outputs::begin();
 
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
-  sim.begin(SIM_BAUD, SERIAL_8N1, SIM_RX_PIN, SIM_TX_PIN);
+  // UART2 disetel oleh gprs_link::begin() lewat mqtt_link::begin().
 
   gps_sensor::begin();
   imu_sensor::begin();
@@ -239,7 +267,4 @@ void loop() {
   outputs::loop();
   telemetry::loop();
   pollSerial();
-
-  // Balasan AT manual / SIM800L diteruskan ke Serial.
-  while (sim.available()) Serial.write(sim.read());
 }
