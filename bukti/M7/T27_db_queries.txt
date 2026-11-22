@@ -1,0 +1,44 @@
+# T27 — query DB dan API setelah reboot saat sewa aktif
+Generated: 2026-11-22T14:49:00Z
+
+## Sewa uji dibuat (simulasi webhook lokal, bukan Midtrans sungguhan)
+order_id = RENT-BK-001-LOCAL-T27-20261122-001
+HTTP 200; rental_id = 60; end_time = 2026-11-22T15:00:28.000Z
+
+SEBELUM RESET:
+  bikes.status = RENTED
+  bikes.lock_state = 0
+  rentals.payment_status = SETTLED
+  rentals.rental_status = ACTIVE
+  telemetri lock_state = false (uptime 118814–128816 ms)
+
+SETELAH RESET FISIK (rst:0x1 POWERON_RESET):
+  [BOOT] Trabass fw=1.0.1-hwdiag bike=BK-001
+  [OUTPUT] Init OK. Relay=OFF (terkunci), buzzer=LOW, LCD=0x27
+  telemetri pertama lock_state = true (uptime 8295 ms), transport=WIFI,
+  link_state=MQTT_CONNECTED, IMU siap di 0x68
+
+QUERY DB:
+  SELECT bike_id,status,lock_state,last_latitude,last_longitude FROM bikes WHERE bike_id='BK-001'
+  -> {"bike_id":"BK-001","status":"RENTED","lock_state":1,
+      "last_latitude":"-7.77087700","last_longitude":"110.41509700"}
+
+  SELECT rental_id,payment_status,rental_status,end_time FROM rentals WHERE midtrans_order_id='...T27...'
+  -> {"rental_id":60,"payment_status":"SETTLED","rental_status":"ACTIVE",
+      "end_time":"2026-11-22T15:00:28.000Z"}
+
+GET /api/admin/bikes/BK-001 (token admin):
+  status=RENTED, lock_state=true, transport=WIFI, link_state=MQTT_CONNECTED,
+  active_rental.rental_id=60, has_live_location=true,
+  last_reported_at=2026-11-22T14:47:48.230Z
+
+CLEANUP:
+  POST /api/admin/bikes/BK-001/end-rental -> HTTP 200
+  rental 60 rental_status=COMPLETED, end_time=2026-11-22T14:48:37.000Z
+  bikes.status=AVAILABLE, bikes.lock_state=1
+
+CATATAN:
+  Backend tidak memaksa lock_state=false saat ada sewa aktif; setelah reboot,
+  telemetri perangkat menimpa lock_state DB menjadi 1. Ini sesuai T27
+  (default aman = terkunci), tetapi harus dicatat sebagai perilaku yang
+  diharapkan pada prototipe ini.

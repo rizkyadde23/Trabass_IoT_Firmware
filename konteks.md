@@ -439,6 +439,18 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
 
 ---
 
+## 8b. Catatan final M7 (2026-11-22)
+
+- **IMU/MPU6050:** setelah user menukar SDA/SCL pada extension board, scan I2C menemukan `0x27` (LCD) **dan `0x68`** (`bukti/M7/T43_imu_detected.log`). Pembacaan Acc/Gyro/Suhu valid, `IMU siap=ya addr=0x68`, dan telemetri menyertakan `mpu_motion:false`. Sampel mentah menunjukkan gyro ±42 d/s saat digoyang, tetapi classifier produksi tidak latch karena mensyaratkan >40 d/s selama 1000 ms berturut-turut. Jadi **deteksi hardware PASS, klasifikasi gerak fisik belum PASS**; jalur insiden TAMPER tetap dibuktikan dengan injeksi MQTT (T23). Tidak ada perubahan threshold firmware produksi.
+- **LCD:** user menyelesaikan kecerahan dengan jumper. I2C `0x27` dan perintah `1` terverifikasi; tegangan backlight tidak diukur agent.
+- **Stale UI:** saat telemetri berhenti 65,4 detik, API masih `has_live_location=true` tetapi `last_reported_at` lama; screenshot `T45_stale_bike.png` diambil otomatis. Ini bukti kriteria "data stale > 30 detik ditandai", bukan bukti badge GPRS.
+- **Failover T45:** simulasi SSID salah berhasil memicu `[NET] WiFi putus 30000 ms, failover ke GPRS`, tetapi SIM800L menjawab `AT tidak merespons` berulang. Tidak ada telemetri `transport:"GPRS"` dan tidak ada screenshot badge GPRS — **tidak diklaim PASS**. Config asli dikembalikan persis (SHA-256 `B72CB06D...A65`), firmware di-flash ulang, dan `T45_restore_wifi.log` membuktikan `WiFi=ya MQTT=ya state=MQTT_CONNECTED transport=WIFI publish=1 gagal=0`.
+- **T27:** sewa uji aktif (rental 60) lalu reset fisik → `POWERON_RESET`, `[OUTPUT] Init OK. Relay=OFF (terkunci)`, telemetri `lock_state=true`. Database `lock_state=1` walaupun rental masih `ACTIVE`; ini perilaku aman yang diharapkan prototipe. Rental ditutup lewat endpoint admin.
+- **T41:** 29,67 menit teramati kumulatif dari 8 segmen capture, 364 telemetri, 0 publish gagal, uptime monotone ~65 menit tanpa reboot. Bukan satu sesi 30 menit tanpa jeda.
+- **Keterbatasan tetap:** tanpa ACK device, tanpa LWT, baterai N/A, broker publik anonymous tanpa TLS, Midtrans sandbox tidak valid (T20 simulasi), T22/T23 sintetik. Sebaliknya T46 dikonfirmasi PASS: user tidak melihat klik/tegasi relay saat reset fisik.
+
+---
+
 ## 9. Referensi cepat lokasi kode
 
 | Area | Path |

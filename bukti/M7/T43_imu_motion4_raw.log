@@ -1,0 +1,33 @@
+﻿[SERIAL-SEND] n
+[NET] ---------- status ----------
+[NET] WiFi=ya MQTT=ya state=MQTT_CONNECTED
+[NET] SSID=KOST PAK TOHA IP=192.168.100.95 RSSI=-76 dBm
+[NET] Broker=broker.hivemq.com:1883
+[NET] publish=708 gagal=0 cmd=6 uptime=3537475 ms
+[SENSOR] GPS fix=ya sat=24 lat/lng=tersedia
+[SENSOR]   lat=-7.770878 lng=110.415100 speed=0.0 km/jam
+[SENSOR] IMU siap=ya mpu_motion=false
+[SENSOR]   IMU addr=0x68
+[SENSOR] Baterai=N/A (sensor belum terpasang)
+[NET] transport=WIFI GPRS=idle state=IDLE IP=- CSQ=0
+[NET] gprsAttempt=0 gprsGagal=0 pin=NORMAL
+[TELEMETRY] Kirim 212 B: {"lat":-7.770878,"lng":110.415100,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":25,"uptime_ms":3540841,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770878,"lng":110.415100,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":26,"uptime_ms":3545842,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770878,"lng":110.415100,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":26,"uptime_ms":3550843,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770878,"lng":110.415100,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":26,"uptime_ms":3555844,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770878,"lng":110.415100,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":26,"uptime_ms":3560845,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770877,"lng":110.415098,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":26,"uptime_ms":3565846,"fw_version":"1.0.1-hwdiag"}
+[SERIAL-SEND] n
+[NET] ---------- status ----------
+[NET] WiFi=ya MQTT=ya state=MQTT_CONNECTED
+[NET] SSID=KOST PAK TOHA IP=192.168.100.95 RSSI=-78 dBm
+[NET] Broker=broker.hivemq.com:1883
+[NET] publish=714 gagal=0 cmd=6 uptime=3568549 ms
+[SENSOR] GPS fix=ya sat=26 lat/lng=tersedia
+[SENSOR]   lat=-7.770877 lng=110.415098 speed=0.0 km/jam
+[SENSOR] IMU siap=ya mpu_motion=false
+[SENSOR]   IMU addr=0x68
+[SENSOR] Baterai=N/A (sensor belum terpasang)
+[NET] transport=WIFI GPRS=idle state=IDLE IP=- CSQ=0
+[NET] gprsAttempt=0 gprsGagal=0 pin=NORMAL
+[TELEMETRY] Kirim 212 B: {"lat":-7.770877,"lng":110.415098,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":26,"uptime_ms":3570847,"fw_version":"1.0.1-hwdiag"}

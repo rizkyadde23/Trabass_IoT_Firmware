@@ -1,0 +1,638 @@
+[
+  {
+    "t": "2026-11-22T14:38:21.896Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:30.683Z",
+    "screenshot": "T45_stale_bike.png",
+    "status": 0,
+    "tail": "Trabass\\n\\nADMINISTRATOR\\n\\nKembali ke kelola armada\\nBK-001\\n· Sepeda Rental Kampus 01\\n\\nMonitoring perception layer per sepeda: GPS NEO-6M, kecepatan, kunci solenoid, gerakan MPU6050, ba\"}\nSCREENSHOT_OK d:\\Code\\ARDUINO\\Praktikum IOT\\Trabass-IoT-Firmware\\bukti\\M7\\T45_stale_bike.png (126871 bytes)\n"
+  },
+  {
+    "t": "2026-11-22T14:38:32.707Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:34.724Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:36.738Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:38.753Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:40.762Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:42.780Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:44.801Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:46.821Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:48.835Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:50.845Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:52.905Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:54.915Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:56.940Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:38:58.954Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:00.972Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:02.986Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:04.994Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:07.012Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:09.021Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:11.036Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:13.046Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:15.059Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:17.082Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:19.097Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:21.108Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:23.128Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:25.139Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:27.160Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:29.177Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:31.189Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:33.209Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:35.225Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:37.249Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:39.267Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:41.288Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:43.301Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:45.319Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:47.332Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:49.343Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:51.353Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:53.373Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:55.385Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:57.399Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:39:59.414Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:01.434Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:03.451Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:05.465Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:07.486Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:09.495Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:11.511Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:13.529Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:15.538Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:17.551Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:19.571Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:21.579Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:23.592Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:25.605Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:27.621Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:29.631Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:31.645Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:33.665Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:35.674Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:37.687Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:39.699Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:41.710Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:43.727Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:45.774Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:47.789Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:49.800Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:51.816Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:53.826Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:55.845Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:57.860Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:40:59.875Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:01.893Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:03.913Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:05.925Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:07.945Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:09.969Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:11.982Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:13.994Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:16.012Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:18.027Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:20.038Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:22.046Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:24.053Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:26.065Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:28.083Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  },
+  {
+    "t": "2026-11-22T14:41:30.096Z",
+    "transport": "WIFI",
+    "link_state": "MQTT_CONNECTED",
+    "last_reported_at": "2026-11-22T14:37:16.541Z",
+    "has_live_location": true
+  }
+]

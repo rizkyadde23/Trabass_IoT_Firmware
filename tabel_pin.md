@@ -29,8 +29,8 @@
 
 | Pin ESP32 | Terhubung ke | Arah | Kegunaan | Status |
 |---|---|---|---|---|
-| `GPIO21` | LCD `SDA`, MPU6050 `SDA` | out | Bus I2C (data) | LCD terbukti; MPU belum |
-| `GPIO22` | LCD `SCL`, MPU6050 `SCL` | out | Bus I2C (clock) | LCD terbukti; MPU belum |
+| `GPIO21` | LCD `SDA`, MPU6050 `SDA` | out | Bus I2C (data); user menukar SDA/SCL pada extension board | LCD + MPU `0x68` terbukti |
+| `GPIO22` | LCD `SCL`, MPU6050 `SCL` | out | Bus I2C (clock); user menukar SDA/SCL pada extension board | LCD + MPU `0x68` terbukti |
 | `GPIO26` | GPS `TXD` | in | UART1 RX | Terbukti, 9600 baud |
 | `GPIO27` | GPS `RXD` | out | UART1 TX | Terbukti, 9600 baud |
 | `GPIO16` | SIM800L `TXD` | in | UART2 RX | Terbukti `AT→OK` |
@@ -47,7 +47,7 @@
 |---|---|---|---|---|
 | `SDA` | ESP32 `GPIO21` | in | I2C data | Terbukti |
 | `SCL` | ESP32 `GPIO22` | in | I2C clock | Terbukti |
-| `VCC` | `3V3` / `5V` ESP32 | power | Sesuai label modul | Perlu cek fisik |
+| `VCC` | `3V3` / `5V` ESP32 | power | Sesuai label modul | Sudah dijumper user (LCD terbaca normal, dilaporkan) |
 | `GND` | GND bersama | — | — | Wajib |
 | Alamat | `0x27` (alternatif `0x3F`) | — | Cek dengan menu serial `s` | Terbukti `0x27` |
 
@@ -55,9 +55,9 @@
 
 | Pin modul | Terhubung ke | Arah | Detail | Status |
 |---|---|---|---|---|
-| `SDA` | ESP32 `GPIO21` | in | Bus I2C bersama LCD | Perlu cek fisik |
-| `SCL` | ESP32 `GPIO22` | in | Bus I2C bersama LCD | Perlu cek fisik |
-| `VCC` | ESP32 `3V3` / `5V` | power | Breakout GY-521 sering butuh `5V` karena regulator onboard; ukur tegangan di pin modul | Perlu cek fisik |
+| `SDA` | ESP32 `GPIO21` | in | Bus I2C bersama LCD | Terbukti setelah SDA/SCL ditukar user |
+| `SCL` | ESP32 `GPIO22` | in | Bus I2C bersama LCD | Terbukti setelah SDA/SCL ditukar user |
+| `VCC` | ESP32 `3V3` / `5V` | power | Breakout GY-521 sering butuh `5V` karena regulator onboard; ukur tegangan di pin modul | Modul merespons; tegangan pasti belum diukur agent |
 | `GND` | GND bersama | — | — | Wajib |
 | `AD0` | — | — | Default `0x68`; HIGH → `0x69` | Firmware auto-probe `0x68`/`0x69` |
 
@@ -140,7 +140,7 @@
 
 Keduanya berbagi bus yang sama pada `GPIO21` (SDA) dan `GPIO22` (SCL).
 
-**Hasil diagnostik 2026-11-22:** menu serial `s` hanya menemukan `0x27` (LCD). Tidak ada `0x68` maupun `0x69`, sehingga MPU6050 belum terpasang di bus — ini bukan masalah alamat semata. Periksa VCC/GND/SDA/SCL dan coba suplai `5V` pada modul GY-521. Firmware sudah melakukan auto-probe dua alamat, tetapi tidak dapat menemukan perangkat yang tidak merespons secara fisik.
+**Hasil diagnostik 2026-11-22 (arsip):** menu serial `s` dulu hanya menemukan `0x27` (LCD). Setelah user menukar SDA/SCL pada extension board, `bukti/M7/T43_imu_detected.log` menunjukkan `0x27` **dan `0x68`**, dengan pembacaan Acc/Gyro/Suhu yang valid. Keterbatasan: classifier `mpu_motion` produksi belum terpicu oleh goyangan fisik karena ambang 40 d/s harus bertahan 1000 ms (lihat `T43_imu_raw_samples.log`); jalur insiden TAMPER tetap diverifikasi lewat injeksi MQTT di T23.
 
 ## 4. Catatan wiring kritikal
 
@@ -165,3 +165,5 @@ Keduanya berbagi bus yang sama pada `GPIO21` (SDA) dan `GPIO22` (SCL).
 | 2026-11-22 | Penambahan tabel per komponen + konfirmasi `COM/NO/NC` relay | Memperjelas koneksi tiap komponen dan jalur solenoid |
 | 2026-11-22 | koreksi status MPU6050 + catatan daya LCD | I2C scan hanya menemukan `0x27`; MPU belum terdeteksi. LCD redup bukan bug firmware |
 | 2026-11-22 | firmware `1.0.1-hwdiag` | Auto-probe MPU `0x68`/`0x69`, I2C 100 kHz, early-drive relay `RELAY_OFF` sebelum `pinMode(OUTPUT)`; upload COM14 sukses |
+| 2026-11-22 | M7: SDA/SCL IMU ditukar, LCD dijumper | I2C scan menemukan `0x27` + `0x68`; LCD dilaporkan normal oleh user |
+| 2026-11-22 | M7: simulasi failover SSID salah lalu pulihkan | Config asli dikembalikan (SHA-256 identik), upload ulang sukses, WiFi/MQTT `MQTT_CONNECTED` |

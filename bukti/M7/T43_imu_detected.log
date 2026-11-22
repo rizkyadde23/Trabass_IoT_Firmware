@@ -1,0 +1,33 @@
+﻿[TELEMETRY] Kirim 212 B: {"lat":-7.770888,"lng":110.415093,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":24,"uptime_ms":3225400,"fw_version":"1.0.1-hwdiag"}
+[SERIAL-SEND] s
+[I2C] Scan...
+  ditemukan: 0x27
+  ditemukan: 0x68
+[SERIAL-SEND] 4
+[MPU6050] Tes...
+[IMU] MPU6050 siap di 0x68 (sample 100 ms, motion bool).
+  Alamat terdeteksi: 0x68
+  Acc[g] 0.03 -1.00 -0.07 | Gyro[d/s] 3.3 -0.1 -0.9 | Suhu 32.9 C
+  Acc[g] 0.03 -1.01 -0.07 | Gyro[d/s] 3.0 0.0 -1.0 | Suhu 32.9 C
+  Acc[g] 0.02 -1.01 -0.06 | Gyro[d/s] 3.0 -0.1 -0.9 | Suhu 33.0 C
+  Acc[g] 0.02 -1.01 -0.07 | Gyro[d/s] 3.2 -0.2 -0.9 | Suhu 33.0 C
+  Acc[g] 0.02 -1.01 -0.06 | Gyro[d/s] 3.2 0.1 -1.0 | Suhu 33.0 C
+[SERIAL-SEND] n
+  OK. Status motion classifier: DIAM
+  Goyangkan sensor, nilai harus berubah (diam datar: az ~1.0).
+[NET] ---------- status ----------
+[NET] WiFi=ya MQTT=ya state=MQTT_CONNECTED
+[NET] SSID=KOST PAK TOHA IP=192.168.100.95 RSSI=-70 dBm
+[NET] Broker=broker.hivemq.com:1883
+[NET] publish=646 gagal=0 cmd=6 uptime=3230745 ms
+[SENSOR] GPS fix=ya sat=24 lat/lng=tersedia
+[SENSOR]   lat=-7.770888 lng=110.415093 speed=0.0 km/jam
+[SENSOR] IMU siap=ya mpu_motion=false
+[SENSOR]   IMU addr=0x68
+[SENSOR] Baterai=N/A (sensor belum terpasang)
+[NET] transport=WIFI GPRS=idle state=IDLE IP=- CSQ=0
+[NET] gprsAttempt=0 gprsGagal=0 pin=NORMAL
+[TELEMETRY] Kirim 212 B: {"lat":-7.770888,"lng":110.415093,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":24,"uptime_ms":3230778,"fw_version":"1.0.1-hwdiag"}
+[SERIAL-SEND] t
+[TELEMETRY] Payload (212 B): {"lat":-7.770888,"lng":110.415093,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":25,"uptime_ms":3233175,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770888,"lng":110.415093,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":25,"uptime_ms":3235780,"fw_version":"1.0.1-hwdiag"}

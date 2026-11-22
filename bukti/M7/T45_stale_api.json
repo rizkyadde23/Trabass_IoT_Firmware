@@ -1,0 +1,8 @@
+{
+  "t": "2026-11-22T14:38:21.896Z",
+  "transport": "WIFI",
+  "link_state": "MQTT_CONNECTED",
+  "last_reported_at": "2026-11-22T14:37:16.541Z",
+  "has_live_location": true,
+  "ageMs": 65357
+}

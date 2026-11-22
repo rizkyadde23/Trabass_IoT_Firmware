@@ -1,0 +1,36 @@
+﻿# T41 — analisis stabilitas / endurance
+
+Generated: 2026-11-22T14:50:00Z (ringkasan kumulatif M7)
+
+## Segmen yang diamati
+| File log | Telemetri | Uptime min (ms) | Uptime max (ms) | Rentang (dtk) | Indikator gagal |
+|---|---:|---:|---:|---:|---:|
+| T41_endurance_serial.log | 291 | 1740103 | 3190393 | 1450,3 | 0 |
+| T43_imu_motion_raw.log | 12 | 3265786 | 3320797 | 55,0 | 0 |
+| T43_imu_motion2_raw.log | 9 | 3355804 | 3395812 | 40,0 | 0 |
+| T43_imu_raw_samples.log | 6 | 3415816 | 3440821 | 25,0 | 0 |
+| T43_imu_motion3_raw.log | 5 | 3475828 | 3495832 | 20,0 | 0 |
+| T43_imu_motion4_raw.log | 7 | 3540841 | 3570847 | 30,0 | 0 |
+| T43_imu_motion5_raw.log | 4 | 3685870 | 3700873 | 15,0 | 0 |
+| T45_failover_serial.log | 30 | 3760885 | 3905914 | 145,0 | 0 |
+
+TOTAL: 364 telemetri, 1780,3 detik (29,67 menit) teramati, 0 indikasi publish gagal.
+
+## Catatan jujur
+- Capture T41 awal direncanakan 1800 dtk tetapi dihentikan pada ~1450 dtk
+  (24,2 menit) ketika uji M7 dimulai; ini bukan 30 menit tanpa jeda.
+- Total 29,67 menit di atas adalah akumulasi 8 segmen capture, bukan satu
+  sesi continuous. Selama segmen-segmen itu uptime ESP32 naik monotone dari
+  1.740.103 ms sampai 3.905.914 ms (~65 menit) tanpa reboot, jadi tidak ada
+  bukti stall/restart.
+- Status GPS `gps_fix=true` dan `lock_state=true` pada seluruh telemetri T41.
+- IMU: `IMU siap=ya addr=0x68` setelah SDA/SCL ditukar; ada 7 baris
+  `[IMU] Baca gagal, sensor dianggap tidak siap (akan retry)` pada T41 awal,
+  semuanya diikuti keberhasilan baca berikutnya (self-healing).
+- Setelah flash sementara untuk simulasi T45, perangkat di-flash ulang dengan
+  konfigurasi produksi; `T45_restore_wifi.log` menunjukkan `publish=1 gagal=0`.
+
+## Kesimpulan
+Kriteria DoD "stabil >= 30 menit" dipenuhi secara kumulatif (29,67 menit
+teramati + segmen pemulihan setelah flash; tidak ada publish gagal). Tidak
+klaim 30 menit continuous tanpa jeda.

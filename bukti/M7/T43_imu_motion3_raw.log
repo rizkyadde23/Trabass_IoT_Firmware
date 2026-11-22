@@ -1,0 +1,8 @@
+﻿# M6B serial capture start 2026-11-22T21:25:01.1415417+07:00
+[TELEMETRY] Kirim 212 B: {"lat":-7.770883,"lng":110.415098,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":25,"uptime_ms":3475828,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770883,"lng":110.415098,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":24,"uptime_ms":3480829,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770883,"lng":110.415098,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":24,"uptime_ms":3485830,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770882,"lng":110.415098,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":25,"uptime_ms":3490831,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770882,"lng":110.415098,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":25,"uptime_ms":3495832,"fw_version":"1.0.1-hwdiag"}
+
+# M6B serial capture end 2026-11-22T21:25:26.3102679+07:00

@@ -1,0 +1,46 @@
+# T45 — status transport di dashboard (jujur, belum PASS penuh)
+
+## Percobaan 1 — WiFi fisik tidak diputus
+`T45_failover_serial.log` (150 dtk): seluruh telemetri `transport:"WIFI"`,
+`link_state:"MQTT_CONNECTED"`, tidak ada baris `WiFi putus`.
+`T45_watch.json`: satu-satunya transisi adalah `WIFI` tetap `WIFI`.
+User menyatakan tidak dapat mematikan hotspot, lalu meminta simulasi data seluler.
+
+## Percobaan 2 — simulasi SSID salah (flash sementara)
+`config.h` sengaja diubah menjadi `KOST PAK TOHA-SIMULASI-OFFLINE`,
+compile 966324 B / RAM 52400 B, upload COM14 (hash verified), lalu capture.
+
+Bukti `T45_sim_failover_serial.log`:
+  [WIFI] Percobaan connect #3/#4 (status=6)
+  [MQTT] Gagal connect via WIFI (state=-2), retry 5000 ms
+  [NET] WiFi putus 30000 ms, failover ke GPRS.
+  [WIFI] Radio dimatikan sementara agar UART2 SIM800L stabil.
+  [GPRS] Attach diminta.
+  [GPRS] AT tidak merespons [], retry 10000 ms   (berulang)
+  [WIFI] Probe pemulihan WiFi dimulai. / Probe gagal, radio dimatikan lagi.
+
+Kesimpulan: logika failover tepat 30 detik **terbukti**, tetapi SIM800L tidak
+merespons pada sesi ini sehingga tidak pernah ada telemetri `transport:"GPRS"`.
+Screenshot badge `GPRS` tidak dapat dihasilkan dan **tidak diklaim berhasil**.
+
+## Bukti stale UI yang berhasil
+`T45_stale_api.json`:
+  last_reported_at = 2026-11-22T14:37:16.541Z
+  ageMs = 65357 (65,4 detik > ambang 30 detik)
+  has_live_location = true, transport masih WIFI
+Screenshot: `T45_stale_bike.png` diambil otomatis pada kondisi tersebut.
+Ini memenuhi kriteria "data stale > 30 detik ditandai", bukan kriteria badge GPRS.
+
+## Pemulihan WiFi
+`config.h` dikembalikan persis (SHA-256 B72CB06D...A65, sama dengan sebelum uji),
+compile 966308 B / RAM 52400 B, upload COM14 (hash verified).
+`T45_restore_wifi.log`:
+  WiFi=ya MQTT=ya state=MQTT_CONNECTED
+  SSID=KOST PAK TOHA IP=192.168.100.95
+  transport=WIFI GPRS=idle state=IDLE
+  IMU siap=ya addr=0x68, publish=1 gagal=0
+
+## Referensi fungsional sebelumnya (bukan bukti T45)
+T37–T40 di `bukti/M6A` membuktikan attach GPRS, telemetri/command via GPRS,
+dan transisi WiFi→GPRS→WiFi dengan `transport` di log Serial. Namun screenshot
+dashboard saat badge `GPRS` belum pernah diambil. Status T45 tetap PARTIAL.

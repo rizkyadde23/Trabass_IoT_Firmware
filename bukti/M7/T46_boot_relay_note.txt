@@ -1,0 +1,19 @@
+# T46 — solenoid tidak unlock saat boot
+
+Bukti firmware dari `T27_reboot_during_rental_serial.log` (reset fisik saat sewa aktif):
+
+  rst:0x1 (POWERON_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+  [BOOT] Trabass fw=1.0.1-hwdiag bike=BK-001
+  [OUTPUT] Init OK. Relay=OFF (terkunci), buzzer=LOW, LCD=0x27
+  [IMU] MPU6050 siap di 0x68 (sample 100 ms, motion bool).
+  [TELEMETRY] Kirim ... "lock_state":true ... "uptime_ms":8295 ...
+
+Sebelum reset, telemetri berturut-turut `lock_state:false` (uptime 118814–
+128816 ms) karena rental 60 aktif. Setelah reset, status kembali `true`.
+
+Firmware `1.0.1-hwdiag` menulis `RELAY_OFF` sebelum `pinMode(OUTPUT)` pada
+`outputs.cpp` untuk menutup jendela aktif-LOW saat boot.
+
+Konfirmasi fisik dari user: **tidak ada klik/tegasi sesaat** pada relay ketika
+tombol RESET ditekan. Bersama log boot di atas, status T46 = PASS.
+GPIO4 dipertahankan karena tidak ada bukti glitch fisik.

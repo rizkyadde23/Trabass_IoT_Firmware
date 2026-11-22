@@ -1,0 +1,8 @@
+﻿# M6B serial capture start 2026-11-22T21:28:33.0134111+07:00
+[TELEMETRY] Kirim 212 B: {"lat":-7.770870,"lng":110.415097,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":25,"uptime_ms":3685870,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770870,"lng":110.415097,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":25,"uptime_ms":3690871,"fw_version":"1.0.1-hwdiag"}
+[TELEMETRY] Kirim 212 B: {"lat":-7.770870,"lng":110.415097,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":25,"uptime_ms":3695872,"fw_version":"1.0.1-hwdiag"}
+[IMU] Baca gagal, sensor dianggap tidak siap (akan retry).
+[TELEMETRY] Kirim 212 B: {"lat":-7.770870,"lng":110.415097,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","satellites":25,"uptime_ms":3700873,"fw_version":"1.0.1-hwdiag"}
+
+# M6B serial capture end 2026-11-22T21:28:51.2303965+07:00
