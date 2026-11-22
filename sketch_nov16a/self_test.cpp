@@ -87,14 +87,14 @@ void toggleRelay() {
 
 bool tesMPU() {
   Serial.println("[MPU6050] Tes...");
-  if (!i2cAda(MPU_ADDR)) {
-    Serial.println("  GAGAL: MPU6050 tidak terdeteksi (cek wiring/alamat)");
-    return false;
-  }
+  // begin() melakukan auto-probe 0x68/0x69, jadi tidak ada pengecekan
+  // alamat tunggal lagi di sini.
   if (!imu_sensor::begin()) {
-    Serial.println("  GAGAL: inisialisasi");
+    Serial.println("  GAGAL: tidak ada MPU6050 di 0x68/0x69 (cek VCC/GND/SDA/SCL)");
     return false;
   }
+  Serial.printf("  Alamat terdeteksi: 0x%02X\n",
+                imu_sensor::detectedAddress());
 
   for (int i = 0; i < 5; i++) {
     imu_sensor::Sample s;

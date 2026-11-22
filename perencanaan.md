@@ -2,7 +2,7 @@
 
 **Lokasi dokumen:** `d:\Code\ARDUINO\Praktikum IOT\Trabass-IoT-Firmware\perencanaan.md`
 **Versi:** 1.7 — **Tanggal:** 2026-11-19
-**Status saat ini:** M1–M4 selesai. **M5 diimplementasikan lalu disupersede**: layanan SMS dihapus karena user memprioritaskan internet GPRS. **M6A (WiFi + GPRS via TinyGSM, broker publik HiveMQ) selesai secara fungsional**: flash 966.008 B / RAM 52.400 B ter-upload; `AT→OK`, `CREG 0,1`, `CIFSR` IP, MQTT/telemetri/command via GPRS terbukti; failover otomatis 30 dtk + pemulihan WiFi PASS (T37–T40, T42). T41 `PARTIAL` (endurance 30 menit belum). T19/T31–T36 tidak dijalankan lagi. M6B (alur bisnis) dan M7 masih terbuka.
+**Status saat ini:** M1–M4 selesai. **M5 diimplementasikan lalu disupersede**: layanan SMS dihapus karena user memprioritaskan internet GPRS. **M6A (WiFi + GPRS via TinyGSM, broker publik HiveMQ) selesai secara fungsional**: flash 966.008 B / RAM 52.400 B ter-upload; `AT→OK`, `CREG 0,1`, `CIFSR` IP, MQTT/telemetri/command via GPRS terbukti; failover otomatis 30 dtk + pemulihan WiFi PASS (T37–T40, T42). T41 `PARTIAL` (endurance 30 menit belum). T19/T31–T36 tidak dijalankan lagi. **M6B T20–T23 selesai dengan bukti lengkap di `bukti/M6B/`** (T20 simulasi webhook lokal; T21 deadline dipercepat; T22/T23 injeksi MQTT; WA nyata). M7 masih terbuka; T45 failover + screenshot dashboard dan observasi fisik MPU/LCD/relay masih pending.
 **Bahasa:** teknis Indonesia (tingkat mahasiswa Informatika)
 
 ---
@@ -351,7 +351,7 @@ flowchart TD
 
 **Skenario:**
 
-1. Midtrans sandbox `settlement` → `UNLOCK`.
+1. Simulasi webhook lokal `settlement` (karena sandbox Midtrans tidak valid) → `UNLOCK`.
 2. Timer sisa ≤ 5 menit → `WARNING_BEEP`.
 3. Waktu habis → `LOCK_AND_ALARM` + insiden `OVERDUE`.
 4. Selesai sewa → `LOCK`.
@@ -362,6 +362,17 @@ flowchart TD
 **Pengujian:** T20–T23.
 
 **Kriteria selesai:** setiap skenario punya bukti: log Serial, log backend, screenshot dashboard, dan query DB. Jika Midtrans sandbox tidak valid, pakai admin force unlock dan nyatakan sebagai substitusi, bukan pembayaran sukses.
+
+**Bukti M6B (2026-11-22, folder `bukti/M6B/`):**
+
+- `T20_backend.log`, `T20_serial.log`, `t20_admin_bike.png`, `db_queries.txt` §T20_A–C. Order sintetik `RENT-BK-001-LOCAL-T20-20261122-001`, signature dihitung lokal memakai `MIDTRANS_SERVER_KEY` dari `.env`. Tidak ada Snap/transaksi Midtrans sungguhan; ini hanya menguji handler webhook, signature, aktivasi sewa, dan publish `UNLOCK`.
+- `T21_backend.log`, `T21_serial.log`, `t21_admin_fleet.png`, `t21_admin_incidents.png`, `db_queries.txt` §T21_A–B. Deadline sengaja dipercepat menjadi 20 detik lewat `UPDATE rentals` pada baris uji id 59; warning dan expiry keduanya terbukti.
+- `T22_backend.log`, `T22_serial.log`, `t22_admin_map.png`, `t22_admin_incidents.png`, `db_queries.txt` §T22_A–B. Koordinat disuntik via MQTT ke broker `broker.hivemq.com:1883`; WhatsApp terkirim ke nomor admin (`[WA SENT]`). Karena perangkat tetap publish heartbeat tiap 5 detik, Redis/DB sempat kembali ke koordinat asli dan menutup insiden berkali-kali; ini bukan kegagalan deteksi, melainkan efek uji injeksi pada perangkat yang masih online.
+- `T23_backend.log`, `T23_serial.log`, `t23_admin_fleet.png`, `t23_admin_incidents.png`, `t23_admin_bike.png`, `db_queries.txt` §T23_A–B. `mpu_motion=true` disuntik via MQTT karena MPU6050 fisik belum terdeteksi; WhatsApp nyata terkirim, lalu insiden ditutup dengan injeksi `lock_state=false`.
+- `cleanup_backend.log`, `cleanup_serial.log`, `db_queries.txt` §CLEANUP. Sesi uji id 59 ditutup lewat `POST /api/admin/bikes/BK-001/end-rental` → `COMPLETED`, `bikes.status=AVAILABLE lock_state=1`, command `LOCK` diterima firmware (`Lock already TERKUNCI (idempoten)`).
+- `backend_full.log` dan `serial_full.log` adalah log mentas; file `T*.log` adalah ringkasan hasil filter. Semua insiden uji (id 18–22) berstatus `RESOLVED`; health akhir `redis_status=OK`, `mqtt_connected=true`.
+
+**Keterbatasan M6B:** T20 bukan settlement Midtrans sungguhan; T22/T23 bukan pergerakan/GPS fisik; bunyi buzzer dan tampilan LCD fisik belum dikonfirmasi agent; ACK device belum ada; heartbeat device dapat menimpa telemetri sintetik; broker publik anonymous tanpa TLS.
 
 ---
 
@@ -382,6 +393,8 @@ flowchart TD
 **Pengujian:** T03, T04, T24, T25, T26, T27.
 
 **Kriteria selesai:** reconnect pulih; tidak ada aktuator "nyangkut"; tidak ada data live palsu; semua keterbatasan (battery N/A, tanpa ACK) dicatat.
+
+**Bukti M7 sementara (2026-11-22):** `bukti/M7/T25_before.txt`, `T25_after.txt`, dan `T25_backend_restart.log` membuktikan restart backend tidak merusak data. T03 dan T24 sudah `PASS` dari uji sebelumnya. T04 tetap `PARTIAL` (restart broker publik tidak memungkinkan; jalur reconnect terbukti lewat gangguan WiFi). T26 `DEFERRED` (tanpa hardware baterai). T27 masih `PARTIAL` (reboot device saat sewa perlu reset fisik). T41 endurance 30 menit dan T45 failover + screenshot masih perlu dijalankan. M7 belum dinyatakan selesai penuh.
 
 ---
 
@@ -430,12 +443,12 @@ Aturan pengisian:
 | T17 | `WARNING_BEEP` | Sisa ≤ 5 menit | Action WARNING_BEEP | 3 beep + LCD | `[OUTPUT] Warning beep mulai/selesai (3 pulse)`, `[LCD] Pesan 5000 ms: 'PERINGATAN' \| 'Ada gerakan menc'`. Bunyi fisik belum dikonfirmasi agent | PARTIAL |
 | T18 | `EXTEND_TIME` | Perpanjangan | Action + deadline | Deadline lokal update, LCD | `[CMD] EXTEND_TIME added_minutes=15 end_time=2026-11-19T09:30:00.000Z`, `[LCD] Pesan ... 'PERPANJANG' \| 'Ditambah 15 mnt'`. **Deadline lokal/NVS tidak diimplementasikan** sesuai keputusan M4 | PARTIAL |
 | T19 | `SEND_SMS` | Command MQTT | Nomor aktif | SMS diterima < 30 dtk | Arsip M5: antrean diterima lalu dua attempt gagal (`AT tidak merespons`). M6: layanan SMS dihapus; command `SEND_SMS` diabaikan firmware | RETIRED |
-| T20 | Payment E2E | Midtrans sandbox | Settlement | Unlock otomatis | — | NOT RUN |
-| T21 | Timer expiry | Tunggu sewa habis | Sesi aktif | Lock + alarm + insiden | — | NOT RUN |
-| T22 | Geofence | Pindah koordinat | Di luar 5000 m | Insiden + alarm | Config diubah: pangkalan Kampus 1 `(-7.7626945,110.4095241)`, radius 5000 m. Alert `active=false` setelah restart; tidak ada violation baru. Uji koordinat jauh sintetis sengaja tidak dijalankan agar tidak membuat insiden/WA baru | PARTIAL (config verified) |
-| T23 | Tamper | Gerak saat locked | `mpu_motion=true` | Insiden + notifikasi | TAMPER id 10 dibuat; alert Redis `active=true`, `notified=true`, `notify_error` kosong; WhatsApp terkirim. Lihat keterbatasan T08 | PARTIAL |
+| T20 | Payment E2E | **Simulasi webhook lokal** `/api/payment/notification` | `settlement`, `signature_key` SHA512 lokal, `gross_amount=15000.00` | Unlock otomatis | Order sintetik `RENT-BK-001-LOCAL-T20-20261122-001`, rental id 59. HTTP 200; backend `[MIDTRANS NOTIF] ... Event: SUCCESS`, `[MQTT PUB] BK-001 -> UNLOCK`, `[WA SENT]`; Serial `[CMD] Diterima 169 B`, `[OUTPUT] Relay=ON pin=LOW -> TERBUKA`, `Eksekusi 'UNLOCK'`, telemetri `lock_state:false`; DB `SETTLED/ACTIVE`, `bikes.lock_state=0`, `telemetry_logs` 3017+. Screenshot `t20_admin_bike.png`. **Bukan transaksi Midtrans sungguhan** | PASS (simulasi) |
+| T21 | Timer expiry | Deadline dipercepat via SQL uji | Sesi id 59 ACTIVE, `end_time=NOW()+20s` | Lock + alarm + insiden | Backend `[TIMER WARNING]`, `[! TIMER EXPIRED !]`, `[MQTT PUB] ... LOCK_AND_ALARM`; Serial `WARNING_BEEP`, `LOCK_AND_ALARM`, `Relay=OFF pin=HIGH -> TERKUNCI`, `[ALARM] ON selama 60000 ms`; DB insiden OVERDUE id 12, `bikes.status=OVERDUE lock_state=1`, rental `OVERDUE`. Screenshot `t21_admin_fleet.png`, `t21_admin_incidents.png` | PASS |
+| T22 | Geofence | Publish MQTT koordinat sintetik `(-7.80,110.45)` | Jarak 6090 m > 5000 m | Insiden + alarm | Backend `[! SECURITY ALERT !] ... Jarak: 6090m`, `[MQTT PUB] ... ALARM_ON`, `[WA SENT]` nyata; Serial `[CMD] ... "reason":"GEOFENCE_VIOLATION (6090m dari pangkalan)"`, `[ALARM] ON`. DB insiden GEOFENCE id 18–20, `telemetry_logs` baris `latitude=-7.80`. Screenshot `t22_admin_map.png`, `t22_admin_incidents.png`. Heartbeat device menimpa koordinat sintetik sehingga alert ber-flap dan insiden `RESOLVED` otomatis; ini dicatat sebagai keterbatasan uji | PASS (sintetik) |
+| T23 | Tamper | Publish MQTT `mpu_motion=true`, `lock_state=true` di pangkalan | Gerakan saat terkunci | Insiden + notifikasi | Backend `[! SECURITY ALERT !] Gerakan terdeteksi ...`, `[MQTT PUB] ... ALARM_ON`, `[WA SENT]` nyata; Serial `[CMD] ... "reason":"TAMPER_DETECTED_MPU6050"`, `[ALARM] ON`. DB insiden TAMPER id 22 `CRITICAL/ACTIVE`, `telemetry_logs` 3185–3199 `mpu_motion=1 lock_state=1`. Screenshot `t23_admin_fleet.png`, `t23_admin_incidents.png`, `t23_admin_bike.png`. Injeksi `mpu_motion=false, lock_state=false` menutup insiden id 22 pukul 13:49:32 UTC. **MPU fisik masih tidak terbaca** | PASS (sintetik) |
 | T24 | Duplicate command | Kirim 2× QoS 1 | Action sama | Tidak ada efek ganda | Dua payload `LOCK` identical berturut-turut: yang pertama idempoten (`Lock already TERKUNCI`), yang kedua `[CMD] Duplikat dalam 3000 ms, diabaikan: LOCK\|2026-11-19T08:21:20Z`; hanya satu force telemetri | PASS |
-| T25 | Backend restart | Restart Node | Service restart | Data tetap konsisten | — | NOT RUN |
+| T25 | Backend restart | Stop PID 3000 lalu `node src/app.js` | Proses restart | Redis/MySQL/MQTT konsisten | `bukti/M7/T25_before.txt` vs `T25_after.txt`: health `redis_status=OK mqtt_connected=true` sebelum dan sesudah; log `T25_backend_restart.log` → `[REDIS]`, `[DB]`, `[MQTT] Berhasil terhubung`, `Subscribed ke trabass/+/telemetry` (dahului `[MQTT ERROR] connack timeout` yang pulih otomatis). `bikes` tetap `AVAILABLE lock_state=1`, rental 59 `COMPLETED`, insiden aktif 0. Telemetri bertambah `max_id 3265 → 3274` dengan `last_reported_at 13:55:00.539Z`, `transport=WIFI`, `link_state=MQTT_CONNECTED`, `has_live_location=true` | PASS |
 | T26 | Low battery | Baterai ≤ 20% | Hardware tersedia | `battery_low=true` | — | DEFERRED |
 | T27 | Reboot saat sewa | Reset ESP32 | Sesi aktif | Default terkunci + terdokumentasi | Reboot M3 → telemetri `lock_state=true`; sesi sewa belum ada | PARTIAL |
 | T28 | Heartbeat periodik (M2) | Boot normal, amati `mosquitto_sub` | `bike/telemetry/#` | Interval 5 dtk, payload valid | 8 heartbeat berurutan 5,0 dtk; `fw_version=1.0.0-m2`; RSSI -50…-60; `lock_state=true` | PASS |
@@ -451,8 +464,12 @@ Aturan pengisian:
 | T38 | Telemetri via GPRS (M6A) | Putus WiFi > 30 dtk, publish telemetri | GPRS attached | Payload masuk backend | `m6_failover_auto_extpower.log`: telemetri 159–160 B `gps_fix:true`, 22–23 satelit dikirim via GPRS sampai uptime ~139 dtk; `telemetry_logs` id 2286–2295 (20:59:11–20:59:51, `-7.770888,110.415103/105`) termasuk `lock_state=0` saat UNLOCK. `/health` `mqtt_connected:true` | PASS |
 | T39 | Command downlink via GPRS (M6A) | Publish `trabass/BK-001/command` saat WiFi putus | GPRS attached | Firmware eksekusi + telemetri | `m6_failover_auto_extpower.log`: `UNLOCK` dan `LOCK` keduanya `Command masuk ... via GPRS` → `[OUTPUT] Relay=ON pin=LOW -> TERBUKA` lalu `Relay=OFF pin=HIGH -> TERKUNCI`, telemetri `lock_state:false` lalu `true`. `m6_gprs_cmd_reactive.log`: UNLOCK via GPRS PASS | PASS |
 | T40 | Failover WiFi→GPRS→WiFi (M6A) | SSID uji sengaja salah, lalu SSID asli | `WIFI_FAILOVER_AFTER_MS=30000` | Log transisi transport, kembali WiFi setelah 15 dtk | `m6_failover_auto_extpower.log`: tepat 30 dtk `WiFi putus 30000 ms, failover ke GPRS` → `Radio dimatikan` → `GPRS AKTIF` → `Transport -> GPRS` → MQTT via GPRS; `m6_gprs_cmd_reactive.log` / `m6_extpower_check2.log`: WiFi probe pulih → `[NET] Transport -> WIFI (WiFi pulih stabil)` setelah 15 dtk stabil, telemetri `gagal=0` | PASS |
-| T41 | Stabilitas 30 menit (M6A) | Boot normal 30 menit | Telemetri 5 dtk | Tidak stall, publish 0 gagal | `m6_extpower_check2.log` (~80 dtk), `m6_failover_extpower_full.log` (~140 dtk GPRS), `m6_failover_auto_extpower.log` (~110 dtk GPRS), `m6_final_regression_ext.log` (~57 dtk WiFi): seluruhnya `publish 0 gagal`, GPS/IMU tetap dibaca. 30 menit penuh belum dijalankan | PARTIAL |
+| T41 | Stabilitas 30 menit (M6A) | Boot normal 30 menit | Telemetri 5 dtk | Tidak stall, publish 0 gagal | `m6_extpower_check2.log` (~80 dtk), `m6_failover_extpower_full.log` (~140 dtk GPRS), `m6_failover_auto_extpower.log` (~110 dtk GPRS), `m6_final_regression_ext.log` (~57 dtk WiFi): seluruhnya `publish 0 gagal`, GPS/IMU tetap dibaca. NOTE: capture 30 menit dimulai 2026-11-22 20:56 lokal ke `bukti/M7/T41_endurance_serial.log`; hasil belum dianalisis | PARTIAL (running) |
 | T42 | Regresi aktuator/menu (M6A) | `UNLOCK`, `LOCK`, `n`, `o`, `9`, `0`, `a` | Firmware `1.0.0-gprs` | Aktuator/menu aman | `m6_final_regression_ext.log`: `n`/`o` merespons, `WiFi=ya MQTT=ya`, `state=LOCKED relay=OFF pin=1`, `publish=10 gagal=0`; `m6_uart_scan_correctpins.log`: menu `0` selesai tanpa menghentikan telemetri; `m6_cmd_wifi.log` (arsip) REGRESI PASS | PASS |
+| T43 | Deteksi MPU6050 | Menu `s` + `4` | `0x68` atau `0x69` muncul | `IMU siap=ya`, `mpu_motion` berubah saat digoyang | `hwdiag_stage0_filtered.log` dan `hwdiag_post_hardening_clean.log`: scan hanya `0x27`, `4` → `GAGAL: tidak ada MPU6050 di 0x68/0x69`, `n` → `IMU siap=tidak`. Firmware `1.0.1-hwdiag` sudah auto-probe dua alamat + `Wire.setClock(100000)` dan ter-upload COM14 (966308 B, 52400 B RAM), tetapi perangkat tidak merespons secara fisik | FAIL (hardware) |
+| T44 | Kecerahan LCD | Menu `1` + ukur VCC | Teks jelas & backlight terang | LCD terbaca normal | `hwdiag_stage0_filtered.log`: `1` → `OK` (alamat `0x27` merespons). Kecerahan rendah dilaporkan user; belum diukur VCC/potensio/resistor backlight | PARTIAL |
+| T45 | Status transport di dashboard | Putus WiFi ESP32 → GPRS | Telemetri `transport` masuk Redis | Badge `GPRS`/`Reconnecting` tampil | Firmware `1.0.1-hwdiag` mengirim `transport:"WIFI"`, `link_state:"MQTT_CONNECTED"` (`hwdiag_post_hardening_clean.log`). Backend restart sukses; `GET /api/admin/bikes/BK-001` → `transport=WIFI link_state=MQTT_CONNECTED`, `GET /api/admin/bikes` → field sama untuk BK-001. Frontend build sukses dengan badge transport. Failover GPRS sungguhan + screenshot dashboard belum dijalankan | PARTIAL |
+| T46 | Solenoid tidak unlock saat boot | Reboot ESP32, amati relay | Tetap `LOCKED` | Tidak ada klik/tegasi sesaat | `o` → `state=LOCKED relay=OFF pin=1` sebelum dan sesudah upload `1.0.1-hwdiag`. Firmware sekarang menulis `RELAY_OFF` sebelum `pinMode(OUTPUT)` untuk mengurangi jendela aktif-LOW. Observasi fisik saat reboot belum dicatat user; GPIO4 masih dipertahankan sampai ada bukti glitch | PARTIAL |
 
 ---
 

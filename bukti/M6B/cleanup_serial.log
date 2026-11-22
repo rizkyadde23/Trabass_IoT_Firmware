@@ -1,0 +1,3 @@
+﻿[CMD] Diterima 99 B: {"action":"LOCK","message":"Sesi sewa diakhiri oleh admin.","timestamp":"2026-11-22T13:50:04.875Z"}
+[OUTPUT] Lock already TERKUNCI (idempoten).
+[CMD] Eksekusi 'LOCK' selesai. state=LOCKED alarm=OFF

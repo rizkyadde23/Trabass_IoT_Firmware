@@ -168,6 +168,10 @@ void begin() {
   gLcdMode = LcdMode::Kosong;
   gLcdDirty = true;
 
+  // Tulis level dulu sebelum pinMode untuk meminimalkan jendela aktif-LOW
+  // saat pin mulai jadi output. GPIO4 adalah strapping pin, jadi ini hanya
+  // mengurangi (tidak menghapus) risiko klik sesaat saat boot.
+  digitalWrite(RELAY_PIN, RELAY_OFF);
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, RELAY_OFF);
   pinMode(BUZZER_PIN, OUTPUT);

@@ -1,0 +1,494 @@
+# Query DB bukti M6B — 2026-11-22T13:51:43.294Z
+
+## T20_A — sewa sintetis setelah webhook settlement (simulasi lokal)
+```sql
+SELECT rental_id,user_id,bike_id,duration_minutes,amount,payment_status,rental_status,
+                 start_time,end_time,payment_processed_at,midtrans_order_id
+          FROM rentals WHERE midtrans_order_id='RENT-BK-001-LOCAL-T20-20261122-001'
+```
+[
+  {
+    "rental_id": 59,
+    "user_id": 1,
+    "bike_id": "BK-001",
+    "duration_minutes": 15,
+    "amount": "15000.00",
+    "payment_status": "SETTLED",
+    "rental_status": "COMPLETED",
+    "start_time": "2026-11-22T13:40:29.000Z",
+    "end_time": "2026-11-22T13:50:04.000Z",
+    "payment_processed_at": "2026-11-22T13:40:29.000Z",
+    "midtrans_order_id": "RENT-BK-001-LOCAL-T20-20261122-001"
+  }
+]
+
+## T20_B — status sepeda akhir (setelah cleanup)
+> Pada eksekusi T20 pukul 13:40:29 UTC, query langsung menampilkan status=RENTED dan lock_state=0. Baris di bawah adalah state akhir setelah admin end-rental pukul 13:50:04 UTC.
+```sql
+SELECT bike_id,status,lock_state FROM bikes WHERE bike_id='BK-001'
+```
+[
+  {
+    "bike_id": "BK-001",
+    "status": "AVAILABLE",
+    "lock_state": 1
+  }
+]
+
+## T20_C — telemetri dengan lock_state=false
+```sql
+SELECT log_id,recorded_at,latitude,longitude,lock_state
+          FROM telemetry_logs WHERE bike_id='BK-001' AND lock_state=0
+          ORDER BY log_id DESC LIMIT 5
+```
+[
+  {
+    "log_id": 3212,
+    "recorded_at": "2026-11-22T13:49:32.000Z",
+    "latitude": "-7.76269450",
+    "longitude": "110.40952410",
+    "lock_state": 0
+  },
+  {
+    "log_id": 3063,
+    "recorded_at": "2026-11-22T13:44:18.000Z",
+    "latitude": "-7.77088500",
+    "longitude": "110.41512000",
+    "lock_state": 0
+  },
+  {
+    "log_id": 3062,
+    "recorded_at": "2026-11-22T13:44:13.000Z",
+    "latitude": "-7.77088300",
+    "longitude": "110.41512000",
+    "lock_state": 0
+  },
+  {
+    "log_id": 3061,
+    "recorded_at": "2026-11-22T13:44:08.000Z",
+    "latitude": "-7.77088200",
+    "longitude": "110.41512000",
+    "lock_state": 0
+  },
+  {
+    "log_id": 3060,
+    "recorded_at": "2026-11-22T13:44:03.000Z",
+    "latitude": "-7.77088000",
+    "longitude": "110.41511800",
+    "lock_state": 0
+  }
+]
+
+## T21_A — deadline dipercepat lalu expiry
+> Pada 13:44:18 UTC sesi berstatus OVERDUE dengan end_time 13:44:12. Baris di bawah adalah state akhir setelah admin end-rental pukul 13:50:04 UTC.
+```sql
+SELECT rental_id,payment_status,rental_status,start_time,end_time
+          FROM rentals WHERE rental_id=59
+```
+[
+  {
+    "rental_id": 59,
+    "payment_status": "SETTLED",
+    "rental_status": "COMPLETED",
+    "start_time": "2026-11-22T13:40:29.000Z",
+    "end_time": "2026-11-22T13:50:04.000Z"
+  }
+]
+
+## T21_B — insiden OVERDUE
+```sql
+SELECT incident_id,incident_type,severity,status,message,detected_at,resolved_at
+          FROM security_incidents WHERE bike_id='BK-001' AND incident_type='OVERDUE'
+          ORDER BY incident_id DESC LIMIT 3
+```
+[
+  {
+    "incident_id": 12,
+    "incident_type": "OVERDUE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "message": "Waktu sewa habis (durasi 15 menit). Sepeda dikunci otomatis.",
+    "detected_at": "2026-11-22T13:44:18.000Z",
+    "resolved_at": "2026-11-22T13:50:04.000Z"
+  },
+  {
+    "incident_id": 6,
+    "incident_type": "OVERDUE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "message": "Waktu sewa habis (durasi 30 menit). Sepeda dikunci otomatis.",
+    "detected_at": "2026-11-13T06:12:04.000Z",
+    "resolved_at": "2026-11-22T11:28:55.000Z"
+  },
+  {
+    "incident_id": 5,
+    "incident_type": "OVERDUE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "message": "Waktu sewa habis (durasi 15 menit). Sepeda dikunci otomatis.",
+    "detected_at": "2026-11-11T06:16:14.000Z",
+    "resolved_at": "2026-11-12T03:35:52.000Z"
+  }
+]
+
+## T22_A — koordinat sintetik di luar radius
+```sql
+SELECT log_id,recorded_at,latitude,longitude,lock_state
+          FROM telemetry_logs WHERE bike_id='BK-001' AND latitude < -7.79
+          ORDER BY log_id DESC LIMIT 10
+```
+[
+  {
+    "log_id": 3132,
+    "recorded_at": "2026-11-22T13:47:07.000Z",
+    "latitude": "-7.80000000",
+    "longitude": "110.45000000",
+    "lock_state": 1
+  },
+  {
+    "log_id": 3131,
+    "recorded_at": "2026-11-22T13:47:06.000Z",
+    "latitude": "-7.80000000",
+    "longitude": "110.45000000",
+    "lock_state": 1
+  },
+  {
+    "log_id": 3130,
+    "recorded_at": "2026-11-22T13:47:06.000Z",
+    "latitude": "-7.80000000",
+    "longitude": "110.45000000",
+    "lock_state": 1
+  },
+  {
+    "log_id": 3129,
+    "recorded_at": "2026-11-22T13:47:04.000Z",
+    "latitude": "-7.80000000",
+    "longitude": "110.45000000",
+    "lock_state": 1
+  },
+  {
+    "log_id": 3127,
+    "recorded_at": "2026-11-22T13:47:04.000Z",
+    "latitude": "-7.80000000",
+    "longitude": "110.45000000",
+    "lock_state": 1
+  },
+  {
+    "log_id": 3126,
+    "recorded_at": "2026-11-22T13:47:03.000Z",
+    "latitude": "-7.80000000",
+    "longitude": "110.45000000",
+    "lock_state": 1
+  },
+  {
+    "log_id": 3125,
+    "recorded_at": "2026-11-22T13:47:03.000Z",
+    "latitude": "-7.80000000",
+    "longitude": "110.45000000",
+    "lock_state": 1
+  },
+  {
+    "log_id": 3124,
+    "recorded_at": "2026-11-22T13:47:00.000Z",
+    "latitude": "-7.80000000",
+    "longitude": "110.45000000",
+    "lock_state": 1
+  },
+  {
+    "log_id": 3123,
+    "recorded_at": "2026-11-22T13:46:59.000Z",
+    "latitude": "-7.80000000",
+    "longitude": "110.45000000",
+    "lock_state": 1
+  },
+  {
+    "log_id": 3121,
+    "recorded_at": "2026-11-22T13:46:58.000Z",
+    "latitude": "-7.80000000",
+    "longitude": "110.45000000",
+    "lock_state": 1
+  }
+]
+
+## T22_B — insiden GEOFENCE
+```sql
+SELECT incident_id,incident_type,severity,status,detected_at,resolved_at
+          FROM security_incidents WHERE bike_id='BK-001' AND incident_type='GEOFENCE'
+          ORDER BY incident_id DESC LIMIT 10
+```
+[
+  {
+    "incident_id": 20,
+    "incident_type": "GEOFENCE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:47:04.000Z",
+    "resolved_at": "2026-11-22T13:47:08.000Z"
+  },
+  {
+    "incident_id": 19,
+    "incident_type": "GEOFENCE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:46:59.000Z",
+    "resolved_at": "2026-11-22T13:47:04.000Z"
+  },
+  {
+    "incident_id": 18,
+    "incident_type": "GEOFENCE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:46:54.000Z",
+    "resolved_at": "2026-11-22T13:46:59.000Z"
+  },
+  {
+    "incident_id": 17,
+    "incident_type": "GEOFENCE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:46:49.000Z",
+    "resolved_at": "2026-11-22T13:46:53.000Z"
+  },
+  {
+    "incident_id": 16,
+    "incident_type": "GEOFENCE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:46:44.000Z",
+    "resolved_at": "2026-11-22T13:46:48.000Z"
+  },
+  {
+    "incident_id": 15,
+    "incident_type": "GEOFENCE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:46:41.000Z",
+    "resolved_at": "2026-11-22T13:46:43.000Z"
+  },
+  {
+    "incident_id": 14,
+    "incident_type": "GEOFENCE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:46:34.000Z",
+    "resolved_at": "2026-11-22T13:46:40.000Z"
+  },
+  {
+    "incident_id": 13,
+    "incident_type": "GEOFENCE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:46:33.000Z",
+    "resolved_at": "2026-11-22T13:46:34.000Z"
+  },
+  {
+    "incident_id": 11,
+    "incident_type": "GEOFENCE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-19T10:16:22.000Z",
+    "resolved_at": "2026-11-19T10:18:41.000Z"
+  },
+  {
+    "incident_id": 7,
+    "incident_type": "GEOFENCE",
+    "severity": "HIGH",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-16T11:34:08.000Z",
+    "resolved_at": "2026-11-19T08:08:09.000Z"
+  }
+]
+
+## T23_A — telemetri injeksi mpu_motion=true saat terkunci
+```sql
+SELECT log_id,recorded_at,latitude,longitude,mpu_motion,lock_state
+          FROM telemetry_logs WHERE bike_id='BK-001' AND mpu_motion=1
+          ORDER BY log_id DESC LIMIT 10
+```
+[
+  {
+    "log_id": 3206,
+    "recorded_at": "2026-11-22T13:49:06.000Z",
+    "latitude": "-7.76269450",
+    "longitude": "110.40952410",
+    "mpu_motion": 1,
+    "lock_state": 1
+  },
+  {
+    "log_id": 3205,
+    "recorded_at": "2026-11-22T13:49:05.000Z",
+    "latitude": "-7.76269450",
+    "longitude": "110.40952410",
+    "mpu_motion": 1,
+    "lock_state": 1
+  },
+  {
+    "log_id": 3204,
+    "recorded_at": "2026-11-22T13:49:04.000Z",
+    "latitude": "-7.76269450",
+    "longitude": "110.40952410",
+    "mpu_motion": 1,
+    "lock_state": 1
+  },
+  {
+    "log_id": 3203,
+    "recorded_at": "2026-11-22T13:49:04.000Z",
+    "latitude": "-7.76269450",
+    "longitude": "110.40952410",
+    "mpu_motion": 1,
+    "lock_state": 1
+  },
+  {
+    "log_id": 3201,
+    "recorded_at": "2026-11-22T13:49:02.000Z",
+    "latitude": "-7.76269450",
+    "longitude": "110.40952410",
+    "mpu_motion": 1,
+    "lock_state": 1
+  },
+  {
+    "log_id": 3200,
+    "recorded_at": "2026-11-22T13:49:01.000Z",
+    "latitude": "-7.76269450",
+    "longitude": "110.40952410",
+    "mpu_motion": 1,
+    "lock_state": 1
+  },
+  {
+    "log_id": 3199,
+    "recorded_at": "2026-11-22T13:49:00.000Z",
+    "latitude": "-7.76269450",
+    "longitude": "110.40952410",
+    "mpu_motion": 1,
+    "lock_state": 1
+  },
+  {
+    "log_id": 3198,
+    "recorded_at": "2026-11-22T13:48:59.000Z",
+    "latitude": "-7.76269450",
+    "longitude": "110.40952410",
+    "mpu_motion": 1,
+    "lock_state": 1
+  },
+  {
+    "log_id": 3197,
+    "recorded_at": "2026-11-22T13:48:58.000Z",
+    "latitude": "-7.76269450",
+    "longitude": "110.40952410",
+    "mpu_motion": 1,
+    "lock_state": 1
+  },
+  {
+    "log_id": 3195,
+    "recorded_at": "2026-11-22T13:48:57.000Z",
+    "latitude": "-7.76269450",
+    "longitude": "110.40952410",
+    "mpu_motion": 1,
+    "lock_state": 1
+  }
+]
+
+## T23_B — insiden TAMPER
+```sql
+SELECT incident_id,incident_type,severity,status,detected_at,resolved_at
+          FROM security_incidents WHERE bike_id='BK-001' AND incident_type='TAMPER'
+          ORDER BY incident_id DESC LIMIT 3
+```
+[
+  {
+    "incident_id": 22,
+    "incident_type": "TAMPER",
+    "severity": "CRITICAL",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:48:17.000Z",
+    "resolved_at": "2026-11-22T13:49:32.000Z"
+  },
+  {
+    "incident_id": 10,
+    "incident_type": "TAMPER",
+    "severity": "CRITICAL",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-16T11:56:51.000Z",
+    "resolved_at": "2026-11-16T12:02:08.000Z"
+  },
+  {
+    "incident_id": 9,
+    "incident_type": "TAMPER",
+    "severity": "CRITICAL",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-16T11:51:22.000Z",
+    "resolved_at": "2026-11-16T11:51:52.000Z"
+  }
+]
+
+## CLEANUP — state akhir setelah admin end-rental
+```sql
+SELECT bike_id,status,lock_state,last_latitude,last_longitude FROM bikes WHERE bike_id='BK-001'
+```
+[
+  {
+    "bike_id": "BK-001",
+    "status": "AVAILABLE",
+    "lock_state": 1,
+    "last_latitude": "-7.77085000",
+    "last_longitude": "110.41508200"
+  }
+]
+
+## CLEANUP — sesi uji ditutup
+```sql
+SELECT rental_id,payment_status,rental_status,end_time FROM rentals WHERE rental_id=59
+```
+[
+  {
+    "rental_id": 59,
+    "payment_status": "SETTLED",
+    "rental_status": "COMPLETED",
+    "end_time": "2026-11-22T13:50:04.000Z"
+  }
+]
+
+## CLEANUP — semua insiden uji resolved
+```sql
+SELECT incident_id,incident_type,status,detected_at,resolved_at
+          FROM security_incidents
+          WHERE bike_id='BK-001' AND incident_id BETWEEN 18 AND 22
+          ORDER BY incident_id DESC LIMIT 10
+```
+[
+  {
+    "incident_id": 22,
+    "incident_type": "TAMPER",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:48:17.000Z",
+    "resolved_at": "2026-11-22T13:49:32.000Z"
+  },
+  {
+    "incident_id": 21,
+    "incident_type": "OVERDUE_MOVEMENT",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:48:17.000Z",
+    "resolved_at": "2026-11-22T13:50:04.000Z"
+  },
+  {
+    "incident_id": 20,
+    "incident_type": "GEOFENCE",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:47:04.000Z",
+    "resolved_at": "2026-11-22T13:47:08.000Z"
+  },
+  {
+    "incident_id": 19,
+    "incident_type": "GEOFENCE",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:46:59.000Z",
+    "resolved_at": "2026-11-22T13:47:04.000Z"
+  },
+  {
+    "incident_id": 18,
+    "incident_type": "GEOFENCE",
+    "status": "RESOLVED",
+    "detected_at": "2026-11-22T13:46:54.000Z",
+    "resolved_at": "2026-11-22T13:46:59.000Z"
+  }
+]

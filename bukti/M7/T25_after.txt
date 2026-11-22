@@ -1,0 +1,8 @@
+# T25 after — 2026-11-22T13:55:00.830Z
+
+HEALTH {"status":"success","message":"Backend, MySQL XAMPP, Redis, MQTT Broker & Payment Engine Berjalan Normal","timestamp":"2026-11-22T13:55:00.000Z","redis_status":"OK","mqtt_connected":true}
+ADMIN_DETAIL {"bike_id":"BK-001","status":"AVAILABLE","lock_state":true,"transport":"WIFI","link_state":"MQTT_CONNECTED","last_reported_at":"2026-11-22T13:55:00.539Z","has_live_location":true}
+DB_BIKE {"bike_id":"BK-001","status":"AVAILABLE","lock_state":1}
+DB_TELEMETRY {"total":3262,"max_id":3274,"latest":"2026-11-22T13:55:00.000Z"}
+DB_RENTAL59 {"rental_id":59,"payment_status":"SETTLED","rental_status":"COMPLETED"}
+DB_OPEN_INCIDENTS {"open_count":0}

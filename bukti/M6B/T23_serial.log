@@ -1,0 +1,6 @@
+﻿[ALARM] ON selama 60000 ms.
+[ALARM] ON selama 60000 ms.
+[CMD] Eksekusi 'ALARM_ON' selesai. state=ALARM alarm=ON
+[CMD] Diterima 95 B: {"action":"ALARM_ON","reason":"TAMPER_DETECTED_MPU6050","timestamp":"2026-11-22T13:48:17.405Z"}
+[ALARM] ON selama 60000 ms.
+[CMD] Eksekusi 'ALARM_ON' selesai. state=ALARM alarm=ON

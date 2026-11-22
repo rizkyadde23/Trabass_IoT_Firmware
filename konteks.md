@@ -247,7 +247,7 @@ Field opsional lain yang dipahami firmware M4: `timestamp` (kunci dedupe), `mess
 - API: `VITE_API_URL` = `http://localhost:3000/api`, polling 5 detik
 - Komponen relevan: `BatteryGauge.jsx`, `ImuMonitorPanel.jsx`, `FleetMap.jsx`, `useAdminBikes.js`, `useAdminBikeDetail.js`, `useBikeCommands.js`, `fleetTelemetry.js`
 - Threshold stale: 30 detik
-- **Tidak ada perubahan frontend untuk baseline M1–M5.**
+- **Tidak ada perubahan frontend untuk baseline M1–M5.** Pra-M6B: `AdminBikeDetail.jsx` menambah badge `WIFI`/`GPRS` dan status `Reconnecting` dari field `transport`/`link_state`; `.env` geofence final disamakan ke backend.
 
 Jika PWA dibuka dari HP: set `VITE_API_URL` ke IP LAN PC dan jalankan Vite dengan `--host`.
 
@@ -284,9 +284,11 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
   "mpu_motion": false,
   "lock_state": true,
   "gps_fix": true,
+  "transport": "WIFI",
+  "link_state": "MQTT_CONNECTED",
   "satellites": 9,
   "uptime_ms": 123456,
-  "fw_version": "1.0.0-m3"
+  "fw_version": "1.0.1-hwdiag"
 }
 ```
 
@@ -300,9 +302,11 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
   "mpu_motion": false,
   "lock_state": true,
   "gps_fix": false,
+  "transport": "GPRS",
+  "link_state": "GPRS_ATTACHING",
   "satellites": 0,
   "uptime_ms": 123456,
-  "fw_version": "1.0.0-m3"
+  "fw_version": "1.0.1-hwdiag"
 }
 ```
 
@@ -313,6 +317,8 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
 | `mpu_motion` | boolean | classifier MPU6050 | Satu-satunya output IMU ke backend |
 | `lock_state` | boolean | state relay | `true` = terkunci |
 | `gps_fix` | boolean | GPS | Tambahan aman |
+| `transport` | string | `mqtt_link::transportLabel()` | `WIFI` / `GPRS`; dipakai badge dashboard |
+| `link_state` | string | `mqtt_link::stateLabel()` | `MQTT_CONNECTED`, `GPRS_ATTACHING`, dll.; dipakai status `Reconnecting` |
 | `satellites` | integer | GPS | Diagnostik |
 | `uptime_ms` | integer | `millis()` | Diagnostik |
 | `fw_version` | string | config | Diagnostik |
@@ -411,6 +417,14 @@ Payload ini tidak memiliki `lat/lng`, sehingga backend lama mengabaikannya. Seja
 - **M6A — broker publik** dipakai supaya GPRS bisa reach broker; anonymous, tanpa TLS, namespace `trabass/<id>/`.
 - **M4/M6A — tidak ada ACK command**; `SENT` di `admin_command_logs` hanya berarti diterima broker. Eksekusi dibuktikan lewat telemetri berikutnya, bukan ACK device.
 - **M6A — kegagalan WA tidak ada fallback SMS lagi**; hanya log `[WA GAGAL]`.
+- **Pra-M6B — MPU6050 belum terdeteksi secara fisik.** I2C scan hanya `0x27` (LCD). Firmware `1.0.1-hwdiag` sudah auto-probe `0x68`/`0x69` dan I2C 100 kHz, tetapi tetap `GAGAL`. Perlu cek VCC/GND/SDA/SCL dan suplai GY-521 (sering butuh 5 V dengan level shifter / pull-up aman untuk ESP32).
+- **Pra-M6B — LCD redup bukan bug firmware.** `lcd.backlight()` hanya ON/OFF; kecerahan diatur hardware (VCC modul, potensio kontras, resistor/jumper backlight).
+- **Pra-M6B — early-drive relay belum menghilangkan risiko GPIO4 strapping.** Firmware menulis `RELAY_OFF` sebelum `pinMode(OUTPUT)`, tetapi glitch sebelum sketch berjalan hanya bisa dihilangkan dengan pindah pin non-strapping + pull-down/up hardware. GPIO4 dipertahankan sampai ada bukti klik saat reboot.
+- **Pra-M6B — indikator transport baru terbukti untuk WiFi.** `transport=WIFI`/`link_state=MQTT_CONNECTED` sudah sampai API; badge `GPRS`/`Reconnecting` belum diuji saat failover GPRS sungguhan dan belum ada screenshot dashboard.
+- **M6B — T20 bukan pembayaran Midtrans sungguhan.** Order `RENT-BK-001-LOCAL-T20-20261122-001` dibuat sintetis di DB, `signature_key` dihitung lokal dari `MIDTRANS_SERVER_KEY`, lalu di-POST ke `/api/payment/notification`. Ini membuktikan handler webhook dan publish `UNLOCK`, bukan settlement Snap.
+- **M6B — T21 mempercepat deadline lewat SQL uji.** Sesi id 59 diubah menjadi `end_time=NOW()+20 SECOND`; perilaku timer produksi (interval 10 dtk, ambang warning 300 dtk) tidak diubah.
+- **M6B — T22/T23 memakai injeksi MQTT, bukan perangkat fisik.** Koordinat `-7.80,110.45` dan `mpu_motion=true` dipublish ke `trabass/BK-001/telemetry`. Karena firmware tetap mengirim telemetri asli tiap 5 dtk, payload sintetik dapat ditimpa; pada T22 insiden GEOFENCE sempat berulang dan `RESOLVED` otomatis.
+- **M6B — notifikasi WhatsApp benar-benar terkirim** ke nomor admin selama T20–T23 (`[WA SENT]` di log backend). Semua insiden dan sesi uji sudah ditutup/dibersihkan lewat endpoint admin.
 
 ### 8.3 Yang harus diisi user di `config.h`
 

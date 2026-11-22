@@ -134,6 +134,10 @@ static void printNetworkStatus() {
   Serial.printf("[SENSOR] IMU siap=%s mpu_motion=%s\n",
                 imu_sensor::healthy() ? "ya" : "tidak",
                 imu_sensor::motion() ? "true" : "false");
+  if (imu_sensor::healthy()) {
+    Serial.printf("[SENSOR]   IMU addr=0x%02X\n",
+                  imu_sensor::detectedAddress());
+  }
 
   float batteryPercent = 0.0f;
   if (battery_sensor::read(batteryPercent)) {
@@ -238,6 +242,9 @@ void setup() {
 
   // I2C harus aktif lebih dulu karena outputs::begin() menginit LCD.
   Wire.begin(SDA_PIN, SCL_PIN);
+  // 100 kHz sesuai spesifikasi LCD I2C dan MPU6050; mengurangi error
+  // pada kabel jumper panjang dibanding default ESP32 yang lebih cepat.
+  Wire.setClock(100000);
 
   // Fail-safe: terkunci dan buzzer diam sejak boot.
   outputs::begin();

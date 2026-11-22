@@ -34,6 +34,9 @@ void update();
 // True jika sensor terpasang dan siap dibaca.
 bool healthy();
 
+// Alamat I2C yang dipakai setelah auto-probe (0 jika belum terdeteksi).
+uint8_t detectedAddress();
+
 // True jika gerakan terklasifikasi (sudah melewati hold, belum idle).
 bool motion();
 

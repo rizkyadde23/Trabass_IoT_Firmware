@@ -20,6 +20,7 @@ namespace {
 using imu_sensor::Sample;
 
 bool gReady = false;
+uint8_t gAddr = MPU_ADDR;
 uint32_t gLastInitAttemptMs = 0;
 uint32_t gInitAttempts = 0;
 uint32_t gLastSampleMs = 0;
@@ -32,17 +33,27 @@ uint32_t gLastActivityMs = 0;
 bool gFirstInitFailureLogged = false;
 
 bool initHardware() {
-  Wire.beginTransmission(MPU_ADDR);
-  Wire.write(0x6B); // PWR_MGMT_1
-  Wire.write(0x00); // bangunkan sensor
-  return Wire.endTransmission() == 0;
+  // Coba alamat utama lalu alamat cadangan.Kept sederhana: dua kandidat
+  // cukup untuk GY-521 dengan AD0 mengambang (0x68) atau HIGH (0x69).
+  const uint8_t candidates[2] = {(uint8_t)MPU_ADDR, (uint8_t)MPU_ADDR_ALT};
+
+  for (uint8_t i = 0; i < 2; i++) {
+    gAddr = candidates[i];
+    Wire.beginTransmission(gAddr);
+    Wire.write(0x6B); // PWR_MGMT_1
+    Wire.write(0x00); // bangunkan sensor
+    if (Wire.endTransmission() == 0) return true;
+  }
+
+  gAddr = 0;
+  return false;
 }
 
 bool readRaw(Sample &out) {
-  Wire.beginTransmission(MPU_ADDR);
+  Wire.beginTransmission(gAddr);
   Wire.write(0x3B);
   if (Wire.endTransmission(false) != 0) return false;
-  if (Wire.requestFrom((uint8_t)MPU_ADDR, (uint8_t)14) != 14) return false;
+  if (Wire.requestFrom(gAddr, (uint8_t)14) != 14) return false;
 
   int16_t v[7];
   for (int i = 0; i < 7; i++) {
@@ -101,7 +112,8 @@ bool begin() {
   gReady = initHardware();
 
   if (gReady) {
-    Serial.println("[IMU] MPU6050 siap (sample 100 ms, motion bool).");
+    Serial.printf("[IMU] MPU6050 siap di 0x%02X (sample 100 ms, motion bool).\n",
+                  gAddr);
     gFirstInitFailureLogged = false;
   } else if (!gFirstInitFailureLogged || (gInitAttempts % 12) == 1) {
     gFirstInitFailureLogged = true;
@@ -141,6 +153,10 @@ void update() {
 
 bool healthy() {
   return gReady;
+}
+
+uint8_t detectedAddress() {
+  return gReady ? gAddr : 0;
 }
 
 bool motion() {

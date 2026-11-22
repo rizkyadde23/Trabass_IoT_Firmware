@@ -38,12 +38,15 @@ bool buildPayload(char *out, size_t outSize) {
         out, outSize,
         "{\"lat\":%.6f,\"lng\":%.6f,\"speed\":%.2f,"
         "\"mpu_motion\":%s,\"lock_state\":%s,\"gps_fix\":true,"
+        "\"transport\":\"%s\",\"link_state\":\"%s\","
         "\"satellites\":%d,\"uptime_ms\":%lu,\"fw_version\":\"%s\"}",
         gps_sensor::getLat(),
         gps_sensor::getLng(),
         gps_sensor::getSpeed(),
         motion,
         lock,
+        mqtt_link::transportLabel(),
+        mqtt_link::stateLabel(),
         gps_sensor::getSats(),
         uptime,
         FW_VERSION);
@@ -52,9 +55,12 @@ bool buildPayload(char *out, size_t outSize) {
         out, outSize,
         "{\"lat\":null,\"lng\":null,\"speed\":0.0,"
         "\"mpu_motion\":%s,\"lock_state\":%s,\"gps_fix\":false,"
+        "\"transport\":\"%s\",\"link_state\":\"%s\","
         "\"satellites\":0,\"uptime_ms\":%lu,\"fw_version\":\"%s\"}",
         motion,
         lock,
+        mqtt_link::transportLabel(),
+        mqtt_link::stateLabel(),
         uptime,
         FW_VERSION);
   }

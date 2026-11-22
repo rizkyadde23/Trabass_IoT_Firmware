@@ -1,0 +1,3 @@
+﻿[TIMER WARNING] Sepeda BK-001 tersisa 1 menit.
+[! TIMER EXPIRED !] Sewa sepeda BK-001 telah habis. Status: OVERDUE.
+[MQTT PUB] BK-001 -> LOCK_AND_ALARM
