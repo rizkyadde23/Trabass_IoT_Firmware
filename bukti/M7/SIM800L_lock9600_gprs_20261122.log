@@ -1,0 +1,62 @@
+﻿# SIM800L lock 9600 + GPRS attach 2026-11-22T22:39:53.4626881+07:00
+[22:39:53.548] # CAPTURE START
+[22:39:54.598] TX: AT+IPR=9600
+[22:39:54.681] RX: [SIM] AT+IPR=9600 -> AT+IPR=9600OK
+[22:39:57.059] TX: AT+IPR?
+[22:39:57.114] RX: [SIM] AT+IPR? -> AT+IPR?+IPR: 9600OK
+[22:39:58.345] RX: [WIFI] Probe pemulihan WiFi dimulai.
+[22:39:59.568] TX: AT
+[22:39:59.628] RX: [SIM] AT -> ATOK
+[22:40:01.571] TX: AT+CSQ
+[22:40:01.670] RX: [SIM] AT+CSQ -> AT+CSQ+CSQ: 19,0OK
+[22:40:03.565] TX: 6
+[22:40:03.618] RX: [GPRS] state=IDLE attached=tidak -> attach diminta
+[22:40:08.428] RX: [WIFI] Probe gagal, radio dimatikan lagi.
+[22:40:08.430] RX: [MQTT] Gagal connect via WIFI (state=-2), retry 5000 ms
+[22:40:33.453] RX: [MQTT] Gagal connect via WIFI (state=-2), retry 5000 ms
+[22:40:33.602] TX: n
+[22:40:33.648] RX: [NET] ---------- status ----------
+[22:40:33.649] RX: [NET] WiFi=tidak MQTT=tidak state=GPRS_ATTACHING
+[22:40:33.650] RX: [NET] SSID=- IP=0.0.0.0 RSSI=0 dBm
+[22:40:33.651] RX: [NET] Broker=broker.hivemq.com:1883
+[22:40:33.652] RX: [NET] publish=0 gagal=0 cmd=0 uptime=1135110 ms
+[22:40:33.653] RX: [SENSOR] GPS fix=ya sat=27 lat/lng=tersedia
+[22:40:33.653] RX: [SENSOR]   lat=-7.770862 lng=110.415107 speed=0.0 km/jam
+[22:40:33.653] RX: [SENSOR] IMU siap=ya mpu_motion=false
+[22:40:33.655] RX: [SENSOR]   IMU addr=0x68
+[22:40:33.656] RX: [SENSOR] Baterai=N/A (sensor belum terpasang)
+[22:40:33.656] RX: [NET] transport=WIFI GPRS=idle state=IDLE IP=- CSQ=0
+[22:40:33.656] RX: [NET] gprsAttempt=1 gprsGagal=6 pin=NORMAL
+[22:40:38.369] RX: [WIFI] Probe pemulihan WiFi dimulai.
+[22:40:48.402] RX: [WIFI] Probe gagal, radio dimatikan lagi.
+[22:40:58.442] RX: [MQTT] Gagal connect via WIFI (state=-2), retry 5000 ms
+[22:40:58.599] TX: n
+[22:40:58.655] RX: [NET] ---------- status ----------
+[22:40:58.656] RX: [NET] WiFi=tidak MQTT=tidak state=GPRS_ATTACHING
+[22:40:58.656] RX: [NET] SSID=- IP=0.0.0.0 RSSI=0 dBm
+[22:40:58.656] RX: [NET] Broker=broker.hivemq.com:1883
+[22:40:58.656] RX: [NET] publish=0 gagal=0 cmd=0 uptime=1160107 ms
+[22:40:58.656] RX: [SENSOR] GPS fix=ya sat=27 lat/lng=tersedia
+[22:40:58.656] RX: [SENSOR]   lat=-7.770862 lng=110.415107 speed=0.0 km/jam
+[22:40:58.656] RX: [SENSOR] IMU siap=ya mpu_motion=false
+[22:40:58.656] RX: [SENSOR]   IMU addr=0x68
+[22:40:58.656] RX: [SENSOR] Baterai=N/A (sensor belum terpasang)
+[22:40:58.656] RX: [NET] transport=WIFI GPRS=idle state=IDLE IP=- CSQ=0
+[22:40:58.664] RX: [NET] gprsAttempt=1 gprsGagal=6 pin=NORMAL
+[22:41:18.363] RX: [WIFI] Probe pemulihan WiFi dimulai.
+[22:41:18.564] TX: n
+[22:41:18.618] RX: [NET] ---------- status ----------
+[22:41:18.618] RX: [NET] WiFi=tidak MQTT=tidak state=GPRS_ATTACHING
+[22:41:18.618] RX: [NET] SSID=- IP=0.0.0.0 RSSI=0 dBm
+[22:41:18.618] RX: [NET] Broker=broker.hivemq.com:1883
+[22:41:18.618] RX: [NET] publish=0 gagal=0 cmd=0 uptime=1180071 ms
+[22:41:18.618] RX: [SENSOR] GPS fix=ya sat=26 lat/lng=tersedia
+[22:41:18.618] RX: [SENSOR]   lat=-7.770862 lng=110.415107 speed=0.0 km/jam
+[22:41:18.627] RX: [SENSOR] IMU siap=ya mpu_motion=false
+[22:41:18.627] RX: [SENSOR]   IMU addr=0x68
+[22:41:18.628] RX: [SENSOR] Baterai=N/A (sensor belum terpasang)
+[22:41:18.630] RX: [NET] transport=WIFI GPRS=idle state=IDLE IP=- CSQ=0
+[22:41:18.631] RX: [NET] gprsAttempt=1 gprsGagal=6 pin=NORMAL
+[22:41:23.441] RX: [MQTT] Gagal connect via WIFI (state=-2), retry 5000 ms
+[22:41:28.381] RX: [WIFI] Probe gagal, radio dimatikan lagi.
+[22:41:33.566] # CAPTURE END

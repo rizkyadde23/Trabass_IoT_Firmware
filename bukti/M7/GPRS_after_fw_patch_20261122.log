@@ -1,0 +1,120 @@
+﻿# GPRS after fw 1.0.2-gprsfix 2026-11-22T22:48:18.9642179+07:00
+[22:48:19.100] # CAPTURE START
+[22:48:21.137] TX: n
+[22:48:21.170] RX: [NET] ---------- status ----------
+[22:48:21.173] RX: [NET] WiFi=tidak MQTT=tidak state=WIFI_CONNECTING
+[22:48:21.175] RX: [NET] SSID=- IP=0.0.0.0 RSSI=0 dBm
+[22:48:21.238] RX: [NET] Broker=broker.hivemq.com:1883
+[22:48:21.239] RX: [NET] publish=0 gagal=0 cmd=0 uptime=20401 ms
+[22:48:21.240] RX: [SENSOR] GPS fix=ya sat=25 lat/lng=tersedia
+[22:48:21.241] RX: [SENSOR]   lat=-7.770858 lng=110.415110 speed=0.0 km/jam
+[22:48:21.242] RX: [SENSOR] IMU siap=ya mpu_motion=false
+[22:48:21.243] RX: [SENSOR]   IMU addr=0x68
+[22:48:21.244] RX: [SENSOR] Baterai=N/A (sensor belum terpasang)
+[22:48:21.245] RX: [NET] transport=WIFI GPRS=idle state=IDLE IP=- CSQ=0
+[22:48:21.246] RX: [NET] gprsAttempt=0 gprsGagal=0 pin=NORMAL
+[22:48:22.436] RX: [WIFI] Percobaan connect #3 (status=6)
+[22:48:22.437] RX: E (33494) wifi:sta is connecting, return error
+[22:48:24.102] TX: 6
+[22:48:24.153] RX: [GPRS] state=IDLE attached=tidak -> attach diminta
+[22:48:24.203] RX: [WIFI] Radio dimatikan sementara agar UART2 SIM800L stabil.
+[22:48:24.204] RX: [GPRS] Attach diminta.
+[22:48:24.205] RX: [GPRS] Modul merespons AT, mulai attach.
+[22:48:24.452] RX: [GPRS] SIM READY, CSQ=19
+[22:48:24.555] RX: [GPRS] Terdaftar, operator=TELKOMSEL
+[22:48:28.342] RX: [MQTT] Gagal connect via WIFI (state=-2), retry 5000 ms
+[22:48:28.392] RX: [GPRS] AKTIF IP=10.198.189.40 APN=internet CSQ=19 uptime=27577 ms
+[22:48:53.359] RX: [MQTT] Gagal connect via WIFI (state=-2), retry 5000 ms
+[22:48:54.120] TX: n
+[22:48:54.168] RX: [WIFI] Probe pemulihan WiFi dimulai.
+[22:48:54.168] RX: [NET] Transport -> GPRS (GPRS aktif)
+[22:48:56.060] RX: [MQTT] Connected clientId=trabass-BK-001-g via GPRS
+[22:48:56.353] RX: [TELEMETRY] Publish pertama OK (216 B).
+[22:48:56.403] RX: [TELEMETRY] Kirim 216 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":55283,"fw_version":"1.0.2-gprsfix"}
+[22:48:56.404] RX: [NET] ---------- status ----------
+[22:48:56.547] RX: [NET] WiFi=tidak MQTT=ya state=MQTT_GPRS_CONNECTED
+[22:48:56.549] RX: [NET] SSID=- IP=0.0.0.0 RSSI=0 dBm
+[22:48:56.554] RX: [NET] Broker=broker.hivemq.com:1883
+[22:48:56.555] RX: [NET] publish=1 gagal=0 cmd=0 uptime=55764 ms
+[22:48:56.556] RX: [SENSOR] GPS fix=ya sat=25 lat/lng=tersedia
+[22:48:56.557] RX: [SENSOR]   lat=-7.770858 lng=110.415110 speed=0.0 km/jam
+[22:48:56.558] RX: [SENSOR] IMU siap=ya mpu_motion=false
+[22:48:56.559] RX: [SENSOR]   IMU addr=0x68
+[22:48:56.560] RX: [SENSOR] Baterai=N/A (sensor belum terpasang)
+[22:48:56.561] RX: [NET] transport=GPRS GPRS=attached state=ATTACHED IP=10.198.189.40 CSQ=19
+[22:48:56.563] RX: [NET] gprsAttempt=1 gprsGagal=0 pin=NORMAL
+[22:49:01.696] RX: [TELEMETRY] Kirim 216 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":24,"uptime_ms":60598,"fw_version":"1.0.2-gprsfix"}
+[22:49:04.194] RX: [WIFI] Probe gagal, radio dimatikan lagi.
+[22:49:07.383] RX: [TELEMETRY] Kirim 216 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":65913,"fw_version":"1.0.2-gprsfix"}
+[22:49:12.711] RX: [TELEMETRY] Kirim 216 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":71590,"fw_version":"1.0.2-gprsfix"}
+[22:49:18.012] RX: [TELEMETRY] Kirim 216 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":76905,"fw_version":"1.0.2-gprsfix"}
+[22:49:23.306] RX: [TELEMETRY] Kirim 216 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":82221,"fw_version":"1.0.2-gprsfix"}
+[22:49:28.616] RX: [TELEMETRY] Kirim 216 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":87537,"fw_version":"1.0.2-gprsfix"}
+[22:49:29.119] TX: n
+[22:49:29.166] RX: [NET] ---------- status ----------
+[22:49:29.167] RX: [NET] WiFi=tidak MQTT=ya state=MQTT_GPRS_CONNECTED
+[22:49:29.168] RX: [NET] SSID=- IP=0.0.0.0 RSSI=0 dBm
+[22:49:29.168] RX: [NET] Broker=broker.hivemq.com:1883
+[22:49:29.169] RX: [NET] publish=7 gagal=0 cmd=0 uptime=88391 ms
+[22:49:29.169] RX: [SENSOR] GPS fix=ya sat=25 lat/lng=tersedia
+[22:49:29.170] RX: [SENSOR]   lat=-7.770858 lng=110.415110 speed=0.0 km/jam
+[22:49:29.170] RX: [SENSOR] IMU siap=ya mpu_motion=false
+[22:49:29.172] RX: [SENSOR]   IMU addr=0x68
+[22:49:29.173] RX: [SENSOR] Baterai=N/A (sensor belum terpasang)
+[22:49:29.174] RX: [NET] transport=GPRS GPRS=attached state=ATTACHED IP=10.198.189.40 CSQ=19
+[22:49:29.174] RX: [NET] gprsAttempt=1 gprsGagal=0 pin=NORMAL
+[22:49:33.954] RX: [TELEMETRY] Kirim 216 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":92851,"fw_version":"1.0.2-gprsfix"}
+[22:49:34.138] RX: [WIFI] Probe pemulihan WiFi dimulai.
+[22:49:39.247] RX: [TELEMETRY] Kirim 216 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":98167,"fw_version":"1.0.2-gprsfix"}
+[22:49:44.172] RX: [WIFI] Probe gagal, radio dimatikan lagi.
+[22:49:44.604] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":103482,"fw_version":"1.0.2-gprsfix"}
+[22:49:49.917] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":108799,"fw_version":"1.0.2-gprsfix"}
+[22:49:55.201] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":114115,"fw_version":"1.0.2-gprsfix"}
+[22:50:00.544] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":119431,"fw_version":"1.0.2-gprsfix"}
+[22:50:05.839] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":124747,"fw_version":"1.0.2-gprsfix"}
+[22:50:09.101] TX: n
+[22:50:09.148] RX: [NET] ---------- status ----------
+[22:50:09.150] RX: [NET] WiFi=tidak MQTT=ya state=MQTT_GPRS_CONNECTED
+[22:50:09.150] RX: [NET] SSID=- IP=0.0.0.0 RSSI=0 dBm
+[22:50:09.152] RX: [NET] Broker=broker.hivemq.com:1883
+[22:50:09.154] RX: [NET] publish=14 gagal=0 cmd=0 uptime=128374 ms
+[22:50:09.155] RX: [SENSOR] GPS fix=ya sat=26 lat/lng=tersedia
+[22:50:09.156] RX: [SENSOR]   lat=-7.770858 lng=110.415110 speed=0.0 km/jam
+[22:50:09.156] RX: [SENSOR] IMU siap=ya mpu_motion=false
+[22:50:09.157] RX: [SENSOR]   IMU addr=0x68
+[22:50:09.158] RX: [SENSOR] Baterai=N/A (sensor belum terpasang)
+[22:50:09.159] RX: [NET] transport=GPRS GPRS=attached state=ATTACHED IP=10.198.189.40 CSQ=19
+[22:50:09.160] RX: [NET] gprsAttempt=1 gprsGagal=0 pin=NORMAL
+[22:50:11.181] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":130063,"fw_version":"1.0.2-gprsfix"}
+[22:50:14.148] RX: [WIFI] Probe pemulihan WiFi dimulai.
+[22:50:16.456] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":135379,"fw_version":"1.0.2-gprsfix"}
+[22:50:16.517] RX: [IMU] Baca gagal, sensor dianggap tidak siap (akan retry).
+[22:50:21.789] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":140695,"fw_version":"1.0.2-gprsfix"}
+[22:50:21.791] RX: [IMU] MPU6050 siap di 0x68 (sample 100 ms, motion bool).
+[22:50:24.215] RX: [WIFI] Probe gagal, radio dimatikan lagi.
+[22:50:27.115] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":146011,"fw_version":"1.0.2-gprsfix"}
+[22:50:32.411] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":151328,"fw_version":"1.0.2-gprsfix"}
+[22:50:37.762] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":24,"uptime_ms":156645,"fw_version":"1.0.2-gprsfix"}
+[22:50:43.080] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":24,"uptime_ms":161961,"fw_version":"1.0.2-gprsfix"}
+[22:50:48.396] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":167278,"fw_version":"1.0.2-gprsfix"}
+[22:50:49.119] TX: n
+[22:50:49.164] RX: [NET] ---------- status ----------
+[22:50:49.166] RX: [NET] WiFi=tidak MQTT=ya state=MQTT_GPRS_CONNECTED
+[22:50:49.167] RX: [NET] SSID=- IP=0.0.0.0 RSSI=0 dBm
+[22:50:49.169] RX: [NET] Broker=broker.hivemq.com:1883
+[22:50:49.170] RX: [NET] publish=22 gagal=0 cmd=0 uptime=168390 ms
+[22:50:49.171] RX: [SENSOR] GPS fix=ya sat=26 lat/lng=tersedia
+[22:50:49.172] RX: [SENSOR]   lat=-7.770858 lng=110.415110 speed=0.0 km/jam
+[22:50:49.172] RX: [SENSOR] IMU siap=ya mpu_motion=false
+[22:50:49.174] RX: [SENSOR]   IMU addr=0x68
+[22:50:49.175] RX: [SENSOR] Baterai=N/A (sensor belum terpasang)
+[22:50:49.176] RX: [NET] transport=GPRS GPRS=attached state=ATTACHED IP=10.198.189.40 CSQ=19
+[22:50:49.241] RX: [NET] gprsAttempt=1 gprsGagal=0 pin=NORMAL
+[22:50:53.722] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":172594,"fw_version":"1.0.2-gprsfix"}
+[22:50:54.172] RX: [WIFI] Probe pemulihan WiFi dimulai.
+[22:50:59.015] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":177911,"fw_version":"1.0.2-gprsfix"}
+[22:51:04.304] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":183227,"fw_version":"1.0.2-gprsfix"}
+[22:51:04.408] RX: [WIFI] Probe gagal, radio dimatikan lagi.
+[22:51:09.662] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":188543,"fw_version":"1.0.2-gprsfix"}
+[22:51:14.980] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770858,"lng":110.415110,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":26,"uptime_ms":193859,"fw_version":"1.0.2-gprsfix"}
+[22:51:19.142] # CAPTURE END

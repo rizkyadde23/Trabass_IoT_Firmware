@@ -1,0 +1,61 @@
+﻿# SIM800L AT probe start 2026-11-22T22:31:25.1446376+07:00 port=COM14 baud=115200
+[22:31:25.230] # CAPTURE START
+[22:31:26.244] TX: h
+[22:31:26.323] RX: Perintah:
+[22:31:26.325] RX:   n=jaringan+sensor | o=aktuator | m=publish telemetri | t=payload
+[22:31:26.326] RX:   a=semua | 1=LCD | 2=buzzer | 3=relay | 4=MPU | 5=GPS
+[22:31:26.327] RX:   6=GPRS attach | 9=swap RX/TX | 0=scan UART SIM | s=scan I2C | h=bantuan
+[22:31:28.255] TX: n
+[22:31:28.314] RX: [NET] ---------- status ----------
+[22:31:28.316] RX: [NET] WiFi=tidak MQTT=tidak state=GPRS_ATTACHING
+[22:31:28.316] RX: [NET] SSID=- IP=0.0.0.0 RSSI=0 dBm
+[22:31:28.317] RX: [NET] Broker=broker.hivemq.com:1883
+[22:31:28.318] RX: [NET] publish=0 gagal=0 cmd=0 uptime=589766 ms
+[22:31:28.319] RX: [SENSOR] GPS fix=ya sat=26 lat/lng=tersedia
+[22:31:28.320] RX: [SENSOR]   lat=-7.770862 lng=110.415107 speed=0.0 km/jam
+[22:31:28.321] RX: [SENSOR] IMU siap=ya mpu_motion=false
+[22:31:28.322] RX: [SENSOR]   IMU addr=0x68
+[22:31:28.322] RX: [SENSOR] Baterai=N/A (sensor belum terpasang)
+[22:31:28.323] RX: [NET] transport=WIFI GPRS=idle state=IDLE IP=- CSQ=0
+[22:31:28.324] RX: [NET] gprsAttempt=1 gprsGagal=4 pin=NORMAL
+[22:31:30.275] TX: AT
+[22:31:31.777] RX: [SIM] AT -> (kosong)
+[22:31:33.265] TX: AT+CSQ
+[22:31:34.775] RX: [SIM] AT+CSQ -> (kosong)
+[22:31:34.831] RX: [MQTT] Gagal connect via WIFI (state=-2), retry 5000 ms
+[22:31:36.250] TX: o
+[22:31:36.299] RX: [OUTPUT] ---------- aktuator ----------
+[22:31:36.300] RX: [OUTPUT] state=LOCKED relay=OFF pin=1 alarm=OFF sisa=0 ms beep=tidak
+[22:31:38.242] TX: 9
+[22:31:39.780] RX: [SIM] Map=SWAPPED RX=17 TX=16 -> 
+[22:31:39.781] RX: [WIFI] Probe pemulihan WiFi dimulai.
+[22:31:39.783] RX: [GPRS] Attach diminta.
+[22:31:40.239] TX: AT
+[22:31:42.278] RX: [SIM] AT -> (kosong)
+[22:31:43.272] TX: 0
+[22:31:43.319] RX: [SIM-SCAN] 2 mapping x 8 baud x CR/CRLF (???26 dtk)...
+[22:31:43.320] RX:   mapping=NORMAL (RX=16 TX=17)
+[22:31:44.721] RX:     baud=  1200 CR=--[] CRLF=--[]
+[22:31:46.101] RX:     baud=  2400 CR=--[] CRLF=--[]
+[22:31:47.495] RX:     baud=  4800 CR=--[] CRLF=--[]
+[22:31:48.900] RX:     baud=  9600 CR=--[] CRLF=--[]
+[22:31:50.299] RX:     baud= 19200 CR=--[] CRLF=--[]
+[22:31:51.722] RX:     baud= 38400 CR=--[] CRLF=--[]
+[22:31:53.107] RX:     baud= 57600 CR=--[] CRLF=--[]
+[22:31:54.506] RX:     baud=115200 CR=--[] CRLF=--[]
+[22:31:54.507] RX:   mapping=SWAPPED (RX=17 TX=16)
+[22:31:55.904] RX:     baud=  1200 CR=--[] CRLF=--[]
+[22:31:57.278] RX:     baud=  2400 CR=--[] CRLF=--[]
+[22:31:58.717] RX:     baud=  4800 CR=--[] CRLF=--[]
+[22:32:00.112] RX:     baud=  9600 CR=--[] CRLF=--[]
+[22:32:01.508] RX:     baud= 19200 CR=--[] CRLF=--[]
+[22:32:02.887] RX:     baud= 38400 CR=--[] CRLF=--[]
+[22:32:04.286] RX:     baud= 57600 CR=--[] CRLF=--[]
+[22:32:05.718] RX:     baud=115200 CR=--[] CRLF=--[]
+[22:32:05.720] RX: [SIM-SCAN] Selesai, kembali NORMAL baud=9600.
+[22:32:05.720] RX: [GPS] NO-FIX (data terakhir 22485 ms lalu, sat=27)
+[22:32:05.830] RX: [WIFI] Probe gagal, radio dimatikan lagi.
+[22:32:05.989] RX: [GPS] FIX lat=-7.770862 lng=110.415107 sat=27 speed=0.0 km/jam
+[22:32:20.798] RX: [MQTT] Gagal connect via WIFI (state=-2), retry 5000 ms
+[22:32:35.712] RX: [WIFI] Probe pemulihan WiFi dimulai.
+[22:32:40.238] # CAPTURE END

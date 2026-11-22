@@ -133,6 +133,11 @@ void loop() {
     return;
   }
 
+  // Safety net: permintaan attach boleh saja sudah ditandai (mis. dari
+  // failover) sementara step kembali Idle setelah menu diagnostik 9/0.
+  // Tanpa ini state machine diam walaupun modem sehat.
+  if (gRequested && gStep == Step::Idle) setStep(Step::Probe, 0);
+
   if (gStep == Step::Idle) return;
   if ((int32_t)(now - gNextStepMs) < 0) return;
 
@@ -242,9 +247,11 @@ bool requestConnect() {
   if (gAttached) return true;
   if (!gRequested) {
     gRequested = true;
-    if (gStep == Step::Idle) setStep(Step::Probe, 0);
     Serial.println("[GPRS] Attach diminta.");
   }
+  // Jangan hanya bergantung pada transisi gRequested: bila permintaan
+  // sudah aktif tetapi step sedang Idle, tetap mulai ulang dari Probe.
+  if (gStep == Step::Idle) setStep(Step::Probe, 0);
   return false;
 }
 
@@ -344,6 +351,7 @@ void scanUart() {
   }
 
   gSwapped = false;
+  gRequested = false;
   applyPins();
   simSerial.updateBaudRate(SIM_BAUD);
   setStep(Step::Idle, 0);

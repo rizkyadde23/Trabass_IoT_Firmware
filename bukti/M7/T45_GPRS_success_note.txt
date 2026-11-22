@@ -1,0 +1,85 @@
+# T45 — status transport GPRS di dashboard (berhasil, 2026-11-22 malam)
+
+## Kronologi diagnosis SIM800L
+
+1. LED SIM800L kedip ~3 detik → modul terdaftar di 2G, tetapi `AT` dari
+   Serial Monitor tidak memunculkan log sama sekali.
+2. Penyebab **tidak ada log**: `pollSerial()` (`sketch_nov16a.ino:221-225`)
+   membuang `\r` dan hanya memanggil `handleLine()` pada `\n`.
+   Serial Monitor harus diset **Both NL & CR** / **Newline**.
+   Bukti: `SIM800L_AT_probe_20261122.log` — dengan `\n`, `h`/`n`/`AT` langsung
+   diproses dan tercetak `[SIM] AT -> ...`.
+3. Penyebab **`AT` kadang kosong**: setelah power-cycle modem,
+   `AT+IPR?` mengembalikan `+IPR: 0` (autobaud), bukan 9600 tetap.
+   Bukti: `SIM800L_AT_config_20261122.log`.
+   Perintah `AT+IPR=9600` dikirim; `AT+IPR?` lalu `+IPR: 9600`.
+   Balasan modem setelah itu stabil:
+   `AT -> ATOK`, `+CSQ: 19,0`, `+CPIN: READY`, `+CREG: 0,1`,
+   `+COPS: 0,0,"TELKOMSEL"`.
+4. Penyebab **attach GPRS tidak jalan walau modem sehat**: state machine
+   berada dalam kondisi `gRequested=true` tetapi `gStep=IDLE` setelah menu
+   diagnostik `9`/`0`. `requestConnect()` hanya menyalakan step saat
+   `gRequested` masih false, sehingga menu `6` jadi no-op
+   (`SIM800L_lock9600_gprs_20261122.log`: tidak ada `AT tidak merespons`,
+   tidak ada `[GPRS] AKTIF`, `gprsGagal` mandek di 6).
+
+## Perbaikan firmware `1.0.2-gprsfix`
+
+- `gprs_link.cpp loop()`: safety net `if (gRequested && gStep == Idle)
+  setStep(Probe, 0)` agar state machine tidak diam.
+- `gprs_link.cpp requestConnect()`: tetap memulai Probe bila step Idle,
+  walaupun `gRequested` sudah true.
+- `gprs_link.cpp scanUart()`: ikut mengosongkan `gRequested` saat selesai.
+- `config.example.h`: `FW_VERSION` → `1.0.2-gprsfix`.
+- Compile sukses: flash 966332 B (73%), RAM 52400 B (15%).
+- Upload COM14 sukses, hash terverifikasi. Isi `config.h` tidak diubah
+  (SSID asli `KOST PAK TOHA`). Hash SHA-256 sekarang `24CE4324...5573`,
+  berbeda dari `B72CB06D...A65` hanya karena normalisasi line ending
+  LF/CRLF; file ini masuk `.gitignore` dan tidak ikut di-commit.
+
+## Bukti GPRS aktif (WiFi sengaja tidak tersambung)
+
+`GPRS_after_fw_patch_20261122.log`:
+
+```
+[22:48:24.204] [GPRS] Attach diminta.
+[22:48:24.205] [GPRS] Modul merespons AT, mulai attach.
+[22:48:24.452] [GPRS] SIM READY, CSQ=19
+[22:48:24.555] [GPRS] Terdaftar, operator=TELKOMSEL
+[22:48:28.392] [GPRS] AKTIF IP=10.198.189.40 APN=internet CSQ=19
+[22:48:54.168] [NET] Transport -> GPRS (GPRS aktif)
+[22:48:56.060] [MQTT] Connected clientId=trabass-BK-001-g via GPRS
+[22:48:56.403] [TELEMETRY] Kirim 216 B: {... "transport":"GPRS",
+               "link_state":"MQTT_GPRS_CONNECTED", "fw_version":"1.0.2-gprsfix"}
+[22:50:49.170] publish=22 gagal=0 cmd=0
+[22:50:49.176] transport=GPRS GPRS=attached state=ATTACHED IP=10.198.189.40
+```
+
+## Bukti backend + dashboard
+
+- `T45_admin_api_GPRS.json`: `GET /api/admin/bikes/BK-001` →
+  `transport: "GPRS"`, `link_state: "MQTT_GPRS_CONNECTED"`,
+  `last_reported_at: 2026-11-22T15:51:37.156Z`, `has_live_location: true`,
+  `lock_state: true`, `status: AVAILABLE`.
+- `T45_dashboard_GPRS_full.png`: teks halaman ter-verifikasi memuat
+  `Tersedia`, `Live`, **`GPRS`**, `UPDATE TERAKHIR baru saja`, dan
+  riwayat telemetri masuk terus-menerus sejak 22.48.56.
+- Endpoint yang sama juga dipakai daftar armada, jadi field `transport`
+  ikut tampil di `/api/admin/bikes`.
+
+## Kesimpulan status
+
+T45 naik dari **PARTIAL menjadi PASS**. Ini bukan lagi simulasi SSID salah:
+WiFi memang tidak tersambung, SIM800L benar-benar attach, MQTT via GPRS
+terhubung, dan badge `GPRS` tampil di dashboard. Catatan lama di
+`T45_failover_note.txt` tetap disimpan sebagai arsip kegagalan sebelum
+perbaikan; jangan dihapus.
+
+## Keterbatasan yang tetap
+
+- Reconfigurasi baud `AT+IPR=9600` dilakukan lewat perintah AT manual,
+  bukan otomatis dari firmware saat boot.
+- Saat WiFi tidak ada, loop utama melambat karena DNS
+  `broker.hivemq.com` diblokir (~25 dtk/iterasi); tidak mengganggu fungsi,
+  hanya memperlambat state machine.
+- Tidak ada ACK device / LWT; `SENT` tetap berarti diterima broker.

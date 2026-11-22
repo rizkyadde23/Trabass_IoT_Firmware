@@ -1,0 +1,33 @@
+﻿# SIM800L AT config probe 2026-11-22T22:39:04.1008908+07:00
+[22:39:04.174] # CAPTURE START
+[22:39:05.188] TX: AT
+[22:39:06.723] RX: [SIM] AT -> (kosong)
+[22:39:07.218] TX: AT
+[22:39:07.274] RX: [SIM] AT -> ATOK
+[22:39:09.197] TX: AT+CSQ
+[22:39:09.295] RX: [SIM] AT+CSQ -> AT+CSQ+CSQ: 19,0OK
+[22:39:11.200] TX: AT+IPR?
+[22:39:11.257] RX: [SIM] AT+IPR? -> AT+IPR?+IPR: 0OK
+[22:39:13.219] TX: AT+CPIN?
+[22:39:13.303] RX: [SIM] AT+CPIN? -> AT+CPIN?+CPIN: READYOK
+[22:39:15.213] TX: AT+CREG?
+[22:39:15.266] RX: [SIM] AT+CREG? -> AT+CREG?+CREG: 0,1OK
+[22:39:17.216] TX: AT+COPS?
+[22:39:17.302] RX: [SIM] AT+COPS? -> AT+COPS?+COPS: 0,0,"TELKOMSEL"OK
+[22:39:18.342] RX: [WIFI] Probe pemulihan WiFi dimulai.
+[22:39:18.451] RX: [MQTT] Gagal connect via WIFI (state=-2), retry 5000 ms
+[22:39:19.203] TX: n
+[22:39:19.258] RX: [NET] ---------- status ----------
+[22:39:19.260] RX: [NET] WiFi=tidak MQTT=tidak state=GPRS_ATTACHING
+[22:39:19.260] RX: [NET] SSID=- IP=0.0.0.0 RSSI=0 dBm
+[22:39:19.262] RX: [NET] Broker=broker.hivemq.com:1883
+[22:39:19.263] RX: [NET] publish=0 gagal=0 cmd=0 uptime=1060710 ms
+[22:39:19.263] RX: [SENSOR] GPS fix=ya sat=25 lat/lng=tersedia
+[22:39:19.263] RX: [SENSOR]   lat=-7.770863 lng=110.415107 speed=0.0 km/jam
+[22:39:19.263] RX: [SENSOR] IMU siap=ya mpu_motion=false
+[22:39:19.267] RX: [SENSOR]   IMU addr=0x68
+[22:39:19.267] RX: [SENSOR] Baterai=N/A (sensor belum terpasang)
+[22:39:19.268] RX: [NET] transport=WIFI GPRS=idle state=IDLE IP=- CSQ=0
+[22:39:19.269] RX: [NET] gprsAttempt=1 gprsGagal=6 pin=NORMAL
+[22:39:28.416] RX: [WIFI] Probe gagal, radio dimatikan lagi.
+[22:39:32.228] # CAPTURE END

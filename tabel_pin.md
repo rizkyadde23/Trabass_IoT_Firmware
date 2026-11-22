@@ -1,7 +1,7 @@
 # Tabel Pin ESP32 — Trabass IoT
 
 **Versi:** 1.1 — **Tanggal:** 2026-11-22  
-**Firmware:** `1.0.1-hwdiag` — **Board:** ESP32 DevKit  
+**Firmware:** `1.0.2-gprsfix` — **Board:** ESP32 DevKit  
 **Sumber:** `konteks.md` §3.1–3.3 dan `sketch_nov16a/config.example.h`
 
 ## 1. Hubungan pin ESP32 ↔ komponen (ringkasan)
@@ -16,7 +16,7 @@
 | `GPIO22` | I2C `SCL` | LCD 16×2, MPU6050 | `SCL ↔ SCL` | Bus I2C bersama | Aktif |
 | `GPIO26` | UART1 `RX` | GPS NEO-6M | `TXD GPS → RX26` | `GPS_BAUD 9600`, `SERIAL_8N1` | Aktif |
 | `GPIO27` | UART1 `TX` | GPS NEO-6M | `RXD GPS ← TX27` | `GPS_BAUD 9600`, `SERIAL_8N1` | Aktif |
-| `GPIO16` | UART2 `RX` | SIM800L v2 EVB | `TXD modul → RX16` | `SIM_BAUD 9600` tetap (`+IPR:9600`); terbukti `AT→OK` | Aktif |
+| `GPIO16` | UART2 `RX` | SIM800L v2 EVB | `TXD modul → RX16` | `SIM_BAUD 9600`. Modem sempat ber-autobaud (`+IPR:0`) sehingga `AT` kadang kosong; sudah dikunci manual ke `AT+IPR=9600` (`+IPR?` → `9600`) | Aktif, terverifikasi GPRS |
 | `GPIO17` | UART2 `TX` | SIM800L v2 EVB | `RXD modul ← TX17` | Level logika modul ~2,8 V; GND wajib bersama | Aktif |
 | `GPIO4` | Digital output | Relay / solenoid | `IN ← GPIO4` | **Aktif LOW**: `LOCK` = pin HIGH / relay OFF; `UNLOCK` = pin LOW / relay ON | Aktif |
 | `GPIO19` | Digital output | Buzzer | `IN ← GPIO19` | Toggle ~2 kHz | Aktif |
@@ -160,10 +160,12 @@ Keduanya berbagi bus yang sama pada `GPIO21` (SDA) dan `GPIO22` (SCL).
 | Tanggal | Perubahan | Alasan |
 |---|---|---|
 | 2026-11-19 | SIM `26/27` → `16/17`; GPS `16/17` → `26/27` | Pin SIM tertukar dengan GPS; setelah ditukar `AT→OK` |
-| 2026-11-19 | Baud SIM autobaud `+IPR:0` → `+IPR=9600` | Respons AT tidak stabil; setelah dikunci permanen stabil |
+| 2026-11-19 | Baud SIM autobaud `+IPR:0` → `+IPR=9600` | Respons AT tidak stabil; saat itu stabil (ternyata tidak permanen — lihat entri 2026-11-22) |
 | 2026-11-19 | Suplai `5V` SIM dari VIN → adaptor `5 V / 3 A` | Menghilangkan `UNDER-VOLTAGE WARNING` dan `CREG 0,2` |
 | 2026-11-22 | Penambahan tabel per komponen + konfirmasi `COM/NO/NC` relay | Memperjelas koneksi tiap komponen dan jalur solenoid |
 | 2026-11-22 | koreksi status MPU6050 + catatan daya LCD | I2C scan hanya menemukan `0x27`; MPU belum terdeteksi. LCD redup bukan bug firmware |
 | 2026-11-22 | firmware `1.0.1-hwdiag` | Auto-probe MPU `0x68`/`0x69`, I2C 100 kHz, early-drive relay `RELAY_OFF` sebelum `pinMode(OUTPUT)`; upload COM14 sukses |
 | 2026-11-22 | M7: SDA/SCL IMU ditukar, LCD dijumper | I2C scan menemukan `0x27` + `0x68`; LCD dilaporkan normal oleh user |
 | 2026-11-22 | M7: simulasi failover SSID salah lalu pulihkan | Config asli dikembalikan (SHA-256 identik), upload ulang sukses, WiFi/MQTT `MQTT_CONNECTED` |
+| 2026-11-22 | M7: `AT+IPR?` kembali `0` (autobaud) setelah modem hang | Power-cycle modem lalu `AT+IPR=9600`; `AT` stabil, `CSQ 19`, `CREG 0,1`, `TELKOMSEL` |
+| 2026-11-22 | M7: firmware `1.0.2-gprsfix` | Perbaiki `requestConnect()`/safety net saat `gRequested=true` tapi step `IDLE` (menu `9`/`0` bisa memicu); GPRS attach, MQTT via GPRS, telemetri `transport:"GPRS"` dan badge dashboard PASS |
