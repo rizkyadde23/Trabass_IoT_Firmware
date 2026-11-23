@@ -1,0 +1,82 @@
+﻿# T47 DB evidence 2026-11-23
+## bikes
+[
+  {
+    "bike_id": "BK-001",
+    "status": "AVAILABLE",
+    "lock_state": 1,
+    "last_latitude": "-7.77088000",
+    "last_longitude": "110.41512300"
+  }
+]
+## telemetry_logs
+[
+  {
+    "log_id": 5071,
+    "bike_id": "BK-001",
+    "lock_state": 1,
+    "recorded_at": "2026-11-23T14:13:03.000Z"
+  },
+  {
+    "log_id": 5070,
+    "bike_id": "BK-001",
+    "lock_state": 1,
+    "recorded_at": "2026-11-23T14:12:58.000Z"
+  },
+  {
+    "log_id": 5069,
+    "bike_id": "BK-001",
+    "lock_state": 1,
+    "recorded_at": "2026-11-23T14:12:53.000Z"
+  },
+  {
+    "log_id": 5068,
+    "bike_id": "BK-001",
+    "lock_state": 1,
+    "recorded_at": "2026-11-23T14:12:47.000Z"
+  },
+  {
+    "log_id": 5067,
+    "bike_id": "BK-001",
+    "lock_state": 1,
+    "recorded_at": "2026-11-23T14:12:42.000Z"
+  }
+]
+## admin_command_logs
+[
+  {
+    "command_id": 59,
+    "action": "FORCE_LOCK",
+    "mqtt_action": "LOCK",
+    "status": "SENT",
+    "created_at": "2026-11-23T14:12:12.000Z"
+  },
+  {
+    "command_id": 58,
+    "action": "FORCE_UNLOCK",
+    "mqtt_action": "UNLOCK",
+    "status": "SENT",
+    "created_at": "2026-11-23T14:11:50.000Z"
+  },
+  {
+    "command_id": 57,
+    "action": "FORCE_LOCK",
+    "mqtt_action": "LOCK",
+    "status": "SENT",
+    "created_at": "2026-11-23T14:10:34.000Z"
+  },
+  {
+    "command_id": 56,
+    "action": "FORCE_UNLOCK",
+    "mqtt_action": "UNLOCK",
+    "status": "SENT",
+    "created_at": "2026-11-23T14:10:13.000Z"
+  },
+  {
+    "command_id": 55,
+    "action": "FORCE_LOCK",
+    "mqtt_action": "LOCK",
+    "status": "SENT",
+    "created_at": "2026-11-23T14:02:18.000Z"
+  }
+]

@@ -1,0 +1,55 @@
+# Uji ulang Force Unlock -> Force Lock - 2026-11-23
+
+## Status
+Arsip kondisi SEBELUM level shifter: PASS untuk jalur perintah backend -> MQTT -> firmware -> penulisan pin,
+MASIH FAIL untuk eksekusi relay fisik 5V bila GPIO4 hanya 3,3 V.
+Telah disupersede oleh T47 (`T47_test_result.txt`) setelah logic level converter dipasang.
+
+## Cara uji
+- Waktu lokal capture: 2026-11-23 16:15:19 - 16:16:09 WIB.
+- Serial capture: `ForceUnlockLock_serial_20261123b.log`.
+- Backend: `POST /api/admin/bike-command` dengan `FORCE_UNLOCK`, jeda, lalu `FORCE_LOCK`.
+- Transport: GPRS. `GET /api/admin/bikes/BK-001` menunjukkan `MQTT_GPRS_CONNECTED`.
+
+## Bukti Serial (dari capture)
+Force Unlock:
+
+    16:15:41.489 [MQTT] Command masuk 127 B dari trabass/BK-001/command via GPRS
+    16:15:41.490 [CMD] Diterima 127 B: {"action":"UNLOCK",...}
+    16:15:41.492 [OUTPUT] Relay=ON pin=LOW -> TERBUKA
+    16:15:41.493 [LCD] Pesan 5000 ms: 'TERBUKA' | 'Perintah diterim'
+    16:15:41.493 [CMD] Eksekusi 'UNLOCK' selesai. state=UNLOCKED alarm=OFF
+    16:15:42.979 [OUTPUT] state=UNLOCKED relay=ON pin=0 alarm=OFF sisa=0 ms beep=tidak
+
+Force Lock:
+
+    16:15:53.390 [MQTT] Command masuk 125 B dari trabass/BK-001/command via GPRS
+    16:15:53.484 [CMD] Diterima 125 B: {"action":"LOCK",...}
+    16:15:53.486 [OUTPUT] Relay=OFF pin=HIGH -> TERKUNCI
+    16:15:53.487 [LCD] Pesan 5000 ms: 'TERKUNCI' | 'Perintah diterim'
+    16:15:53.488 [CMD] Eksekusi 'LOCK' selesai. state=LOCKED alarm=OFF
+    16:16:02.955 [OUTPUT] state=LOCKED relay=OFF pin=1 alarm=OFF sisa=0 ms beep=tidak
+
+Jaringan saat uji:
+
+    [NET] WiFi=tidak MQTT=ya state=MQTT_GPRS_CONNECTED
+    [NET] publish=101 gagal=0 cmd=2 uptime=675097 ms
+    [NET] transport=GPRS GPRS=attached state=ATTACHED IP=10.205.38.131 CSQ=14
+
+## Bukti backend
+- command_id 36 FORCE_UNLOCK -> mqtt_action UNLOCK -> SENT, sent_at 2026-11-23T09:15:29.969Z
+- command_id 37 FORCE_LOCK -> mqtt_action LOCK -> SENT, sent_at 2026-11-23T09:15:52.610Z
+- API response keduanya HTTP 200, topic `trabass/BK-001/command`, `state_updated=true`.
+- Telemetri setelah uji: `lock_state=true`, `transport=GPRS`, `link_state=MQTT_GPRS_CONNECTED`,
+  last_reported_at 2026-11-23T09:16:37.085Z.
+
+## Analisis
+- Firmware menerima dua perintah tepat waktu, menulis pin LOW untuk UNLOCK dan HIGH untuk LOCK.
+- Tidak ada desync gLocked, tidak ada idempoten palsu, tidak ada duplikat UNLOCK setelah LOCK.
+- Masalah tetap di level sinyal: modul relay 5V aktif-LOW tidak benar-benar OFF pada 3,3 V.
+- Uji jumper sebelumnya membuktikan: IN->GND = ON, IN->3V3 = ON, IN->5V = OFF.
+
+## Kesimpulan
+Perbaikan firmware tidak diperlukan. Perlu level shifter 3,3V -> 5V pada jalur IN relay,
+atau solusi hardware lain yang membuat IN benar-benar 5V saat LOCK. Jangan pindahkan pin GPIO4.
+Solenoid jangan dibiarkan berdaya tanpa pengawasan.

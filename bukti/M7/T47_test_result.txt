@@ -1,0 +1,93 @@
+# T47 — Force Lock/Unlock setelah Logic Level Converter 3,3V → 5V
+
+**Tanggal:** 2026-11-23
+**Status:** PASS
+**Bike ID:** BK-001
+**Transport:** GPRS
+
+## Tujuan
+Memverifikasi bahwa tombol Force Unlock dan Force Lock di dashboard admin benar-benar
+mengubah kondisi fisik relay/solenoid setelah level shifter dipasang, tanpa mengubah firmware.
+
+## Root cause dan perbaikan
+Sebelum T47, GPIO4 ESP32 mengeluarkan HIGH 3,3 V langsung ke `IN` modul relay 5V.
+Modul aktif-LOW itu tidak menganggap 3,3 V sebagai HIGH, sehingga relay tetap ON saat LOCK.
+
+Perbaikan:
+
+```text
+ESP32 GPIO4 -> LV1 (converter)
+ESP32 3V3   -> LV
+ESP32 5V    -> HV
+ESP32 GND   -> GND (disatukan dengan relay + suplai solenoid)
+HV1         -> IN relay
+Relay VCC   -> 5V; COM <- + solenoid; NO -> + solenoid; NC kosong
+```
+
+Converter bersifat non-inverting. Firmware tidak diubah:
+`RELAY_OFF=HIGH`, `RELAY_ON=LOW`, boot default terkunci.
+
+## Langkah uji
+1. Pasang logic level converter sesuai wiring di atas.
+2. Buka capture Serial COM14 115200 (`T47_serial_capture_20261123.log`).
+3. Kirim `POST /api/admin/bike-command` dengan `action=FORCE_UNLOCK`.
+4. Amati klik relay, LED hijau, Serial `o`, dan telemetri `lock_state`.
+5. Kirim `POST /api/admin/bike-command` dengan `action=FORCE_LOCK`.
+6. Ulangi observasi, lalu ambil API/DB dan screenshot dashboard.
+
+## Input
+- `bike_id`: `BK-001`
+- `action`: `FORCE_UNLOCK`, lalu `FORCE_LOCK`
+- `reason`: `ADMIN_MANUAL`
+- `source`: `ADMIN_DASHBOARD`
+- jaringan: WiFi tidak aktif, MQTT via GPRS
+
+## Expected vs Actual
+
+| Tahap | Expected | Actual | Status |
+|---|---|---|---|
+| Force Unlock | MQTT command diterima, `pin=LOW`, relay ON, LED hijau ON, solenoid berdaya, `lock_state=false` | `[CMD] Diterima ... "action":"UNLOCK"`, `[OUTPUT] Relay=ON pin=LOW -> TERBUKA`, `o` → `state=UNLOCKED relay=ON pin=0`, telemetri `lock_state=false` | PASS |
+| Force Lock | MQTT command diterima, `pin=HIGH`, relay OFF, LED hijau mati, solenoid putus, `lock_state=true` | `[CMD] Diterima ... "action":"LOCK"`, `[OUTPUT] Relay=OFF pin=HIGH -> TERKUNCI`, `o` → `state=LOCKED relay=OFF pin=1`, telemetri `lock_state=true` | PASS |
+| Backend audit | Kedua action `SENT`, `mqtt_action` benar | command_id 58 `FORCE_UNLOCK/UNLOCK/SENT`, command_id 59 `FORCE_LOCK/LOCK/SENT` | PASS |
+| DB/API | `bikes.lock_state=1`, telemetri terakhir `lock_state=1`, `transport=GPRS` | API `lock_state=true`, `MQTT_GPRS_CONNECTED`; DB `bikes.lock_state=1`, `telemetry_logs` 5067–5071 `lock_state=1` | PASS |
+| Dashboard | Halaman detail BK-001 menampilkan status terkini | `T47_dashboard_BK-001.png` dihasilkan dari `http://localhost:5173/admin/bikes/BK-001`; PAGE_INFO memuat `BK-001` dan `Sepeda Rental Kampus 01` | PASS |
+| Fisik (laporan user) | Klik relay ada, solenoid bergerak bebas, tidak panas | User melaporkan semua berfungsi dengan sempurna setelah converter terpasang | PASS (dilaporkan user) |
+
+## Bukti Ringkas Serial
+
+```text
+[21:11:42.774] [NET] WiFi=tidak MQTT=ya state=MQTT_GPRS_CONNECTED
+[21:11:42.846] [NET] transport=GPRS GPRS=attached state=ATTACHED IP=10.66.48.221 CSQ=13
+[21:11:51.563] [MQTT] Command masuk 127 B dari trabass/BK-001/command via GPRS
+[21:11:51.662] [CMD] Diterima 127 B: {"action":"UNLOCK",...}
+[21:11:51.666] [OUTPUT] Relay=ON pin=LOW -> TERBUKA
+[21:11:52.874] [OUTPUT] state=UNLOCKED relay=ON pin=0 alarm=OFF sisa=0 ms beep=tidak
+[21:11:52.130] [TELEMETRY] ... "lock_state":false ...
+[21:12:13.184] [MQTT] Command masuk 125 B dari trabass/BK-001/command via GPRS
+[21:12:13.241] [CMD] Diterima 125 B: {"action":"LOCK",...}
+[21:12:13.243] [OUTPUT] Relay=OFF pin=HIGH -> TERKUNCI
+[21:12:14.177] [TELEMETRY] ... "lock_state":true ...
+[21:12:21.808] [OUTPUT] state=LOCKED relay=OFF pin=1 alarm=OFF sisa=0 ms beep=tidak
+```
+
+## File bukti
+- `T47_serial_capture_20261123.log`
+- `T47_backend_evidence.txt`
+- `T47_db_evidence.txt`
+- `T47_dashboard_BK-001.png`
+- `ForceLock_hardware_stuck_note_20261123.txt` (diagnosa sebelum perbaikan)
+- `ForceUnlockLock_test_result_20261123.txt` (arsip kondisi sebelum converter)
+
+## Keterbatasan
+- Pengukuran tegangan tidak dilakukan dengan multimeter. Pembuktian level logika dilakukan
+  lewat uji jumper user (`GND`→ON, `3V3`→ON, `5V`→OFF) dan perilaku relay setelah converter.
+- Counter `[NET] publish=108 gagal=2` bersifat kumulatif sejak boot; tidak ada event publish
+  gagal baru yang teramati selama capture T47.
+- Agen tidak dapat membaca isi visual PNG (model tidak menerima input gambar), tetapi file
+  screenshot dibuat melalui headless Chrome dan PAGE_INFO memuat URL/detail BK-001.
+- status fisik solenoid PASS berdasarkan laporan user setelah perbaikan.
+
+## Kesimpulan
+T47 **PASS**. Root cause ketidakcocokan level 3,3 V ESP32 terhadap modul relay 5V terselesaikan
+dengan logic level converter non-inverting. Tidak ada perubahan firmware, tidak ada perubahan
+pin GPIO4, dan tidak ada perubahan backend/frontend.

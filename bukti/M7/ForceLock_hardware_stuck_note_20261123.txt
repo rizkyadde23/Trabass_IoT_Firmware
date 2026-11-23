@@ -1,0 +1,136 @@
+# Diagnosa Force Lock tidak memutus daya solenoid - 2026-11-23
+
+## Status
+FAIL / INVESTIGASI HARDWARE. Jangan dinyatakan PASS sampai relay OFF dan solenoid putus terukur.
+
+## Gejala (laporan user)
+- Dashboard admin: Force Unlock berhasil, LCD "TERBUKA / Perintah diterima".
+- Dashboard admin: Force Lock diklik, LCD "TERKUNCI / Perintah diterima".
+- LED relay hardware tetap menyala dan solenoid tetap berdaya.
+- Transport aktif: GPRS.
+
+## Bukti firmware (Serial Monitor COM14, 115200)
+User mengirim `o` setelah Force Lock, hasil:
+
+    state=LOCKED relay=OFF pin=1 alarm=OFF sisa=0 ms beep=tidak
+
+Interpretasi:
+- `pin=1` = GPIO4 HIGH = RELAY_OFF sesuai konfigurasi aktif-LOW.
+- Firmware sudah menjalankan `outputs::setLock(true)` dan menulis HIGH ke relay.
+- `state=LOCKED` berasal dari variabel `gLocked`, `pin=1` berasal dari `digitalRead(RELAY_PIN)`.
+- Keduanya konsisten di sisi firmware. Tidak ada indikasi bug idempoten/desync.
+
+## Bukti backend
+File: `ForceLock_backend_evidence_20261123.txt`
+
+Ringkasan:
+- `GET /api/admin/bikes/BK-001`: `lock_state=true`, `transport="GPRS"`,
+  `link_state="MQTT_GPRS_CONNECTED"`, `last_reported_at=2026-11-23T08:26:09.765Z`.
+- `GET /api/admin/command-logs`: FORCE_UNLOCK dan FORCE_LOCK berurutan, semua `status="SENT"`,
+  `mqtt_action="UNLOCK"` / `"LOCK"`. Tidak ada FAILED.
+- LCD menampilkan "TERKUNCI / Perintah diterima", jadi action LOCK benar diproses firmware.
+
+## Kesimpulan sementara
+Jalur backend -> MQTT -> firmware -> penulisan GPIO4 sudah terbukti benar.
+Ketidaksesuaian ada di antara GPIO4 dan daya solenoid:
+
+1. Kabel `IN` relay tidak benar-benar di GPIO4 / masih mendapat level LOW.
+2. Modul relay tidak berperilaku aktif-LOW seperti diasumsikan (bisa modul aktif-HIGH atau jumper berubah).
+3. Kontak relay welded / macet sehingga COM-NO tetap tertutup.
+4. Solenoid tidak lewat kontak COM-NO (mis. terpasang di NC atau bypass), sehingga relay OFF tetap berdaya.
+
+## Observasi lanjutan dari user (2026-11-23)
+- LED relay: **dua-duanya menyala** (LED PWR + LED STATE/RLY).
+- Suara **klik: tidak ada** saat Force Lock.
+- Kabel solenoid: **COM + NO** sudah sesuai dokumentasi, NC kosong.
+- Multimeter: **tidak tersedia**.
+
+Artinya: kontak COM-NO benar secara wiring, tetapi coil/status relay tetap aktif tanpa suara klik.
+Ini konsisten dengan modul relay yang tidak merespons level HIGH, kontak welded, atau modul
+yang sebenarnya aktif-HIGH.
+
+## Uji penentu tanpa multimeter - hasil sebagian (2026-11-23)
+Daya solenoid diputus, kabel `IN` dilepas dari GPIO4.
+
+| IN disambung | LED | Klik | Arti |
+|---|---|---|---|
+| GND ESP32 | hijau + merah menyala | ADA | Relay ON / aktif-LOW terkonfirmasi |
+| 5V modul | merah menyala, hijau mati | TIDAK ADA | Relay OFF benar pada level 5V |
+
+Interpretasi sementara:
+- Modul relay **sehat** dan benar **aktif-LOW** saat level HIGH = 5V.
+- LED merah = indikator daya; LED hijau = indikator relay/coil (ON saat energized).
+- Yang belum diuji: `IN` -> **3V3 ESP32**. GPIO4 hanya mengeluarkan 3,3 V.
+- Hipotesis utama: modul relay 5V tidak fully off pada 3,3 V karena optocoupler masih
+  sedikit konduksi (VCC modul 5V vs IN 3,3V). Relay tetap tertahan ON tanpa klik baru.
+- Ini menjelaskan `pin=1` di Serial tetapi LED hijau tetap ON dan solenoid tetap berdaya.
+
+## Hasil uji 3V3 - ROOT CAUSE TERKONFIRMASI (2026-11-23)
+Daya solenoid tetap diputus selama uji jumper awal.
+
+| IN disambung | LED hijau (status relay) | Klik | Kondisi relay |
+|---|---|---|---|
+| GND ESP32 | ON | ADA | ON |
+| 3V3 ESP32 | ON | ADA (masih tertahan) | ON |
+| 5V modul | OFF | TIDAK ADA | OFF |
+
+## Observasi tambahan (2026-11-23, koreksi user)
+- VCC relay = 5V ESP32, IN = 3V3 ESP32, GND = GND ESP32.
+- LED hijau menyala (relay energized/ON), konsisten dengan uji jumper.
+- User sempat mengira solenoid terkunci/tidak berdaya, tetapi koreksi: **plunger solenoid tersangkut
+  secara mekanis**, sehingga tampak terkunci meski relay ON. Kontradiksi sebelumnya teratasi.
+- Catatan: solenoid yang tersangkut saat berdaya dapat panas; putuskan daya solenoid setelah observasi.
+
+Fakta tambahan:
+- Modul **tidak punya** header/jumper `JD-VCC` / `VCC`.
+- VCC modul relay diambil dari **5V ESP32**.
+
+## Root cause
+GPIO4 ESP32 hanya mengeluarkan **3,3 V** untuk logic HIGH. Modul relay 5V menganggap
+3,3 V masih sebagai level LOW/aktif, sehingga optocoupler tetap konduksi dan relay tidak pernah OFF.
+ saat Force Lock, firmware sudah menulis HIGH (`pin=1`), tetapi relay tetap tertahan ON dan
+tidak ada klik baru karena memang tidak pernah lepas dari kondisi UNLOCK sebelumnya.
+
+Ini bukan bug backend/MQTT/firmware dan bukan salah wiring COM-NO.
+
+## Perbaikan yang direkomendasikan (tanpa memindahkan GPIO4)
+Tambahkan **level shifter 3,3V -> 5V** pada jalur sinyal `IN`:
+
+Opsi terbaik: modul logic level converter 3,3V/5V (1 channel cukup).
+- LV  <- GPIO4 + 3V3 ESP32
+- HV  -> IN relay + 5V ESP32
+- GND bersama
+- Firmware tidak diubah; `RELAY_OFF=HIGH`, `RELAY_ON=LOW` tetap berlaku di sisi GPIO4.
+
+Opsi diskrit jika tidak ada modul converter: rangkaian 2 transistor (NPN + PNP) non-inverting,
+atau NPN + pull-up 4,7k ke 5V dengan penyesuaian `RELAY_ON`/`RELAY_OFF` di `config.h`
+(perlu update dokumentasi karena level pin terbalik di sisi GPIO4).
+
+## Status
+Belum PASS. Perlu dipasang level shifter, lalu uji ulang:
+Force Unlock -> klik + hijau ON + solenoid berdaya;
+Force Lock -> klik + hijau OFF + solenoid putus + telemetri `lock_state=true`.
+
+## Keselamatan
+Jangan menyambungkan daya solenoid kembali sebelum level shifter terpasang dan uji klik berhasil.
+
+## Tindakan keselamatan
+Solenoid yang terus berdaya dapat panas. Putuskan daya solenoid sebelum pengujian jumper,
+dan hindari menekan Force Unlock berulang kali sampai wiring diperiksa.
+
+## RESOLUSI — 2026-11-23
+User memasang modul **logic level converter 3,3V ↔ 5V** (non-inverting) pada jalur
+`GPIO4 → LV1 → HV1 → IN relay`, dengan `LV←3V3`, `HV←5V`, dan GND bersama.
+Firmware tidak diubah; `RELAY_OFF=HIGH` / `RELAY_ON=LOW` tetap berlaku di sisi GPIO4.
+
+Uji ulang T47 **PASS**: Force Unlock → `pin=LOW`, relay ON, solenoid berdaya,
+`lock_state=false`; Force Lock → `pin=HIGH`, relay OFF, solenoid putus, `lock_state=true`.
+Bukti akhir: `T47_test_result.txt`, `T47_serial_capture_20261123.log`,
+`T47_backend_evidence.txt`, `T47_db_evidence.txt`, `T47_dashboard_BK-001.png`.
+
+Catatan diagnosa ini dipertahankan sebagai arsip root cause; status masalah sudah **CLOSED**.
+
+## Catatan
+Jangan memindahkan pin relay sebelum ada bukti tegangan/wiring yang salah.
+`config.h` lokal masih mengcomment `ENABLE_SERIAL_TEST_MENU`, jadi perintah menu `3` tidak aktif;
+toggle relay tidak dijalankan lewat script agar tidak mengubah perilaku perangkat.

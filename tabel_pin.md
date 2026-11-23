@@ -18,7 +18,7 @@
 | `GPIO27` | UART1 `TX` | GPS NEO-6M | `RXD GPS ← TX27` | `GPS_BAUD 9600`, `SERIAL_8N1` | Aktif |
 | `GPIO16` | UART2 `RX` | SIM800L v2 EVB | `TXD modul → RX16` | `SIM_BAUD 9600`. Modem sempat ber-autobaud (`+IPR:0`) sehingga `AT` kadang kosong; sudah dikunci manual ke `AT+IPR=9600` (`+IPR?` → `9600`) | Aktif, terverifikasi GPRS |
 | `GPIO17` | UART2 `TX` | SIM800L v2 EVB | `RXD modul ← TX17` | Level logika modul ~2,8 V; GND wajib bersama | Aktif |
-| `GPIO4` | Digital output | Relay / solenoid | `IN ← GPIO4` | **Aktif LOW**: `LOCK` = pin HIGH / relay OFF; `UNLOCK` = pin LOW / relay ON | Aktif |
+| `GPIO4` | Digital output | Relay / solenoid via level converter | `LV1 ← GPIO4`, `HV1 → IN relay` | **Aktif LOW**: `LOCK` = pin HIGH (3,3 V → 5 V) / relay OFF; `UNLOCK` = pin LOW / relay ON | Terbukti T47 |
 | `GPIO19` | Digital output | Buzzer | `IN ← GPIO19` | Toggle ~2 kHz | Aktif |
 | `GPIO1 / GPIO3` | UART0 USB | PC / Serial Monitor | USB | `SERIAL_BAUD 115200`; menu tes serial | Aktif |
 | `EN`, `BOOT` | Reset / boot | Tombol onboard DevKit | — | Standar board | Aktif |
@@ -35,9 +35,9 @@
 | `GPIO27` | GPS `RXD` | out | UART1 TX | Terbukti, 9600 baud |
 | `GPIO16` | SIM800L `TXD` | in | UART2 RX | Terbukti `AT→OK` |
 | `GPIO17` | SIM800L `RXD` | out | UART2 TX | Terbukti |
-| `GPIO4` | Relay `IN` | out | Kontrol aktif-LOW | Terbukti T12/T13 |
+| `GPIO4` | Level converter `LV1` → `HV1` → Relay `IN` | out | Kontrol aktif-LOW; 3,3 V diterjemahkan ke 5 V | Terbukti T12/T13, T47 |
 | `GPIO19` | Buzzer `IN` | out | Alarm / beep | Terbukti via log `[ALARM]` |
-| `3V3` | SIM800L `VDD` | power | Referensi level logika | Terbukti |
+| `3V3` | SIM800L `VDD`, level converter `LV` | power | Referensi level logika ESP32 | Terbukti, T47 |
 | `USB` | PC `COM14` | — | Upload + Serial 115200 | Terbukti |
 | `GND` | Semua modul + adaptor | — | Common ground | Wajib |
 
@@ -85,19 +85,33 @@
 
 | Pin modul | Terhubung ke | Arah | Detail | Status |
 |---|---|---|---|---|
-| `IN` | ESP32 `GPIO4` | in | **Aktif LOW** | Terbukti T12/T13 |
-| `VCC` | ESP32 `5V` | power | Modul relay umum | Perlu cek fisik |
+| `IN` | ESP32 `GPIO4` via level converter (`LV1 → HV1`) | in | **Aktif LOW di sisi relay**; input 3,3 V dinaikkan ke 5 V | Terbukti T12/T13, T47 |
+| `VCC` | ESP32 `5V` | power | Modul relay umum; dikonfirmasi user | Terbukti T47 |
 | `GND` | GND bersama | — | — | Wajib |
 | `COM` | Suplai **+** solenoid | power | Sumber terpisah, bukan dari ESP32 | Sesuai konfirmasi wiring |
 | `NO` | Solenoid terminal **+** | out | Kontak tertutup saat relay ON | Sesuai konfirmasi wiring |
 | `NC` | **Tidak dipakai** | — | Dibiarkan kosong | Sesuai konfirmasi wiring |
 
+### 2.6a Modul Logic Level Converter 3,3V ↔ 5V
+
+| Pin converter | Terhubung ke | Arah | Detail | Status |
+|---|---|---|---|---|
+| `LV` | ESP32 `3V3` | power | Sisi logika ESP32 | Terbukti T47 |
+| `HV` | ESP32 `5V` / suplai 5V modul | power | Sisi logika relay | Terbukti T47 |
+| `GND` | GND bersama | — | ESP32 + relay + suplai solenoid | Wajib |
+| `LV1` | ESP32 `GPIO4` | in | Output 3,3 V dari firmware | Terbukti T47 |
+| `HV1` | Relay `IN` | out | Level 5 V saat `LOCK`, 0 V saat `UNLOCK` | Terbukti T47 |
+
+Converter bersifat **non-inverting**. Firmware tidak diubah: `RELAY_OFF=HIGH`,
+`RELAY_ON=LOW`, dan boot default tetap terkunci. Sebelum T47, GPIO4 3,3 V disambung
+langsung ke `IN` relay 5V sehingga relay tetap ON saat `LOCK` (root cause).
+
 **Logika kontak:**
 
-| Kondisi | `GPIO4` | Relay | Kontak `COM–NO` | Solenoid |
-|---|---|---|---|---|
-| Terkunci (`LOCK`) | HIGH | OFF | Terbuka | Nonaktif |
-| Terbuka (`UNLOCK`) | LOW | ON | Tertutup | Aktif |
+| Kondisi | `GPIO4` | `IN relay` setelah converter | Relay | Kontak `COM–NO` | Solenoid |
+|---|---|---|---|---|---|
+| Terkunci (`LOCK`) | HIGH (3,3 V) | HIGH (5 V) | OFF | Terbuka | Nonaktif |
+| Terbuka (`UNLOCK`) | LOW (0 V) | LOW (0 V) | ON | Tertutup | Aktif |
 
 ### 2.7 Solenoid / kunci elektronik
 

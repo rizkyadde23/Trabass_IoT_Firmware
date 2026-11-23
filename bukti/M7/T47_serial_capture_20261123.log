@@ -1,0 +1,51 @@
+﻿# T47 serial capture 2026-11-23T21:11:40.5272050+07:00
+[21:11:40.695] # CAPTURE START port=COM14 baud=115200 seconds=45 drained=0
+[21:11:41.698] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770882,"lng":110.415122,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":982255,"fw_version":"1.0.2-gprsfix"}
+[21:11:41.758] TX: o
+[21:11:41.763] RX: [OUTPUT] ---------- aktuator ----------
+[21:11:41.806] RX: [OUTPUT] state=LOCKED relay=OFF pin=1 alarm=OFF sisa=0 ms beep=tidak
+[21:11:42.710] TX: n
+[21:11:42.773] RX: [NET] ---------- status ----------
+[21:11:42.774] RX: [NET] WiFi=tidak MQTT=ya state=MQTT_GPRS_CONNECTED
+[21:11:42.787] RX: [NET] SSID=- IP=0.0.0.0 RSSI=0 dBm
+[21:11:42.787] RX: [NET] Broker=broker.hivemq.com:1883
+[21:11:42.838] RX: [NET] publish=108 gagal=2 cmd=16 uptime=983745 ms
+[21:11:42.841] RX: [SENSOR] GPS fix=ya sat=25 lat/lng=tersedia
+[21:11:42.841] RX: [SENSOR]   lat=-7.770882 lng=110.415122 speed=0.0 km/jam
+[21:11:42.841] RX: [SENSOR] IMU siap=ya mpu_motion=false
+[21:11:42.844] RX: [SENSOR]   IMU addr=0x68
+[21:11:42.846] RX: [SENSOR] Baterai=N/A (sensor belum terpasang)
+[21:11:42.846] RX: [NET] transport=GPRS GPRS=attached state=ATTACHED IP=10.66.48.221 CSQ=13
+[21:11:42.849] RX: [NET] gprsAttempt=1 gprsGagal=0 pin=NORMAL
+[21:11:46.955] RX: [TELEMETRY] Kirim 217 B: {"lat":-7.770882,"lng":110.415122,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":987571,"fw_version":"1.0.2-gprsfix"}
+[21:11:51.563] RX: [MQTT] Command masuk 127 B dari trabass/BK-001/command via GPRS
+[21:11:51.662] RX: [CMD] Diterima 127 B: {"action":"UNLOCK","reason":"ADMIN_MANUAL","source":"ADMIN_DASHBOARD","admin_user_id":1,"timestamp":"2026-11-23T14:11:50.516Z"}
+[21:11:51.664] RX: [ALARM] Sudah mati (idempoten).
+[21:11:51.666] RX: [OUTPUT] Relay=ON pin=LOW -> TERBUKA
+[21:11:51.668] RX: [LCD] Pesan 5000 ms: 'TERBUKA' | 'Perintah diterim'
+[21:11:51.668] RX: [CMD] Eksekusi 'UNLOCK' selesai. state=UNLOCKED alarm=OFF
+[21:11:52.130] RX: [TELEMETRY] Kirim 218 B: {"lat":-7.770882,"lng":110.415122,"speed":0.00,"mpu_motion":false,"lock_state":false,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":992610,"fw_version":"1.0.2-gprsfix"}
+[21:11:52.243] RX: [WIFI] Probe pemulihan WiFi dimulai.
+[21:11:52.725] TX: o
+[21:11:52.871] RX: [OUTPUT] ---------- aktuator ----------
+[21:11:52.874] RX: [OUTPUT] state=UNLOCKED relay=ON pin=0 alarm=OFF sisa=0 ms beep=tidak
+[21:11:57.445] RX: [TELEMETRY] Kirim 218 B: {"lat":-7.770882,"lng":110.415122,"speed":0.00,"mpu_motion":false,"lock_state":false,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":998069,"fw_version":"1.0.2-gprsfix"}
+[21:12:02.277] RX: [WIFI] Probe gagal, radio dimatikan lagi.
+[21:12:02.762] RX: [TELEMETRY] Kirim 219 B: {"lat":-7.770882,"lng":110.415122,"speed":0.00,"mpu_motion":false,"lock_state":false,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":1003386,"fw_version":"1.0.2-gprsfix"}
+[21:12:05.724] TX: o
+[21:12:05.776] RX: [OUTPUT] ---------- aktuator ----------
+[21:12:05.776] RX: [OUTPUT] state=UNLOCKED relay=ON pin=0 alarm=OFF sisa=0 ms beep=tidak
+[21:12:08.103] RX: [TELEMETRY] Kirim 219 B: {"lat":-7.770882,"lng":110.415122,"speed":0.00,"mpu_motion":false,"lock_state":false,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":1008704,"fw_version":"1.0.2-gprsfix"}
+[21:12:13.184] RX: [MQTT] Command masuk 125 B dari trabass/BK-001/command via GPRS
+[21:12:13.241] RX: [CMD] Diterima 125 B: {"action":"LOCK","reason":"ADMIN_MANUAL","source":"ADMIN_DASHBOARD","admin_user_id":1,"timestamp":"2026-11-23T14:12:12.118Z"}
+[21:12:13.243] RX: [OUTPUT] Relay=OFF pin=HIGH -> TERKUNCI
+[21:12:13.246] RX: [LCD] Pesan 5000 ms: 'TERKUNCI' | 'Perintah diterim'
+[21:12:13.250] RX: [CMD] Eksekusi 'LOCK' selesai. state=LOCKED alarm=OFF
+[21:12:14.177] RX: [TELEMETRY] Kirim 218 B: {"lat":-7.770882,"lng":110.415123,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":1014207,"fw_version":"1.0.2-gprsfix"}
+[21:12:14.715] TX: m
+[21:12:15.209] RX: [TELEMETRY] Kirim 218 B: {"lat":-7.770882,"lng":110.415123,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":1015818,"fw_version":"1.0.2-gprsfix"}
+[21:12:20.521] RX: [TELEMETRY] Kirim 218 B: {"lat":-7.770882,"lng":110.415123,"speed":0.00,"mpu_motion":false,"lock_state":true,"gps_fix":true,"transport":"GPRS","link_state":"MQTT_GPRS_CONNECTED","satellites":25,"uptime_ms":1021137,"fw_version":"1.0.2-gprsfix"}
+[21:12:21.738] TX: o
+[21:12:21.804] RX: [OUTPUT] ---------- aktuator ----------
+[21:12:21.808] RX: [OUTPUT] state=LOCKED relay=OFF pin=1 alarm=OFF sisa=0 ms beep=tidak
+[21:12:25.709] # CAPTURE END
