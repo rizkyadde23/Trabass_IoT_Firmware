@@ -39,6 +39,13 @@ uint32_t alarmRemainingMs();
 void warningBeep();
 bool isBeeping();
 
+// Hitung mundur sewa untuk LCD. Deadline hanya disimpan di RAM dan
+// dihapus saat LOCK/boot; bukan sumber kebenaran (backend tetap DB).
+void setRentalRemainingMinutes(uint32_t minutes);
+void extendRentalMinutes(uint32_t minutes);
+void clearRentalTimer();
+uint32_t rentalRemainingMs();
+
 // Tampilkan pesan sementara di LCD (maksimal 16 karakter per baris).
 void showMessage(const char *line1, const char *line2,
                  uint32_t durationMs = 0);

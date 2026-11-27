@@ -59,6 +59,15 @@ uint32_t durasiAlarm(JsonVariantConst value) {
   return (uint32_t)ms;
 }
 
+// Durasi menit dari payload. Dibatasi 7 hari hanya untuk menolak nilai
+// rusak; batas sewa normal tetap ditentukan backend (default 1440 menit).
+uint32_t durasiMenit(JsonVariantConst value) {
+  long menit = value | 0L;
+  if (menit <= 0) return 0;
+  if (menit > 10080) menit = 10080;
+  return (uint32_t)menit;
+}
+
 void ringkas(const char *teks, char *out, size_t outSize) {
   if (outSize == 0) return;
   strncpy(out, teks != nullptr ? teks : "", outSize - 1);
@@ -118,6 +127,8 @@ bool loop() {
   } else if (strcmp(action, "UNLOCK") == 0) {
     outputs::alarmOff();
     outputs::setLock(false);
+    outputs::setRentalRemainingMinutes(
+        durasiMenit(doc["duration_minutes"]));
     outputs::showMessage("TERBUKA", "Perintah diterima");
 
   } else if (strcmp(action, "ALARM_ON") == 0) {
@@ -139,16 +150,25 @@ bool loop() {
 
   } else if (strcmp(action, "WARNING_BEEP") == 0) {
     outputs::warningBeep();
+    const uint32_t sisaMenit = durasiMenit(doc["remaining_minutes"]);
+    if (sisaMenit > 0) {
+      outputs::setRentalRemainingMinutes(sisaMenit);
+    }
     outputs::showMessage("PERINGATAN",
                          pesan[0] != '\0' ? pesan : "Periksa sepeda");
 
   } else if (strcmp(action, "EXTEND_TIME") == 0) {
-    int added = doc["added_minutes"] | 0;
+    const uint32_t added = durasiMenit(doc["added_minutes"]);
     char detail[17];
-    snprintf(detail, sizeof(detail), "Ditambah %d mnt", added);
+    snprintf(detail, sizeof(detail), "Ditambah %lu mnt",
+             (unsigned long)added);
+    if (added > 0) {
+      outputs::extendRentalMinutes(added);
+    }
     outputs::showMessage("PERPANJANG", detail);
-    Serial.printf("[CMD] EXTEND_TIME added_minutes=%d end_time=%s\n",
-                  added, (const char *)(doc["end_time"] | "-"));
+    Serial.printf("[CMD] EXTEND_TIME added_minutes=%lu end_time=%s\n",
+                  (unsigned long)added,
+                  (const char *)(doc["end_time"] | "-"));
 
   } else if (strcmp(action, "SEND_SMS") == 0) {
     // M6: layanan SMS dihapus. UART2 dipakai penuh oleh GPRS/TinyGSM.

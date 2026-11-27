@@ -45,6 +45,10 @@ uint32_t gMessageUntilMs = 0;
 char gMessageLine1[17] = {0};
 char gMessageLine2[17] = {0};
 
+// Deadline hitung mundur sewa (0 = tidak ada sewa aktif). RAM-only:
+// sengaja tidak disimpan ke NVS agar reboot tetap fail-safe terkunci.
+uint32_t gRentalDeadlineMs = 0;
+
 LcdMode gLcdMode = LcdMode::Kosong;
 bool gLcdDirty = true;
 uint32_t gLcdNextRefreshMs = 0;
@@ -99,6 +103,41 @@ LcdMode hitungMode() {
   return gLocked ? LcdMode::Terkunci : LcdMode::Terbuka;
 }
 
+uint32_t sisaSewaMs() {
+  if (gRentalDeadlineMs == 0) return 0;
+  int32_t sisa = (int32_t)(gRentalDeadlineMs - millis());
+  return sisa > 0 ? (uint32_t)sisa : 0;
+}
+
+// Baris kedua LCD saat sewa aktif. Format sengaja dipadatkan agar
+// status "AMAN" dan sisa waktu tetap muat dalam 16 karakter.
+void formatSisaSewa(char *out, size_t outSize) {
+  if (outSize == 0) return;
+
+  if (gRentalDeadlineMs == 0) {
+    snprintf(out, outSize, "Status: AMAN");
+    return;
+  }
+
+  const uint32_t totalDetik = sisaSewaMs() / 1000;
+  if (totalDetik >= 6000) { // >= 100 menit: pakai jam agar tidak overflow
+    uint32_t jam = totalDetik / 3600;
+    uint32_t menit = (totalDetik % 3600) / 60;
+    if (jam > 99) {
+      jam = 99;
+      menit = 59;
+    }
+    snprintf(out, outSize, "AMAN Sisa:%02uj%02um",
+             (unsigned)jam, (unsigned)menit);
+    return;
+  }
+
+  const uint32_t menit = totalDetik / 60;
+  const uint32_t detik = totalDetik % 60;
+  snprintf(out, outSize, "AMAN Sisa:%02um%02us",
+           (unsigned)menit, (unsigned)detik);
+}
+
 void tulisBaris(uint8_t baris, const char *teks) {
   char buffer[17] = {0};
   strncpy(buffer, teks, 16);
@@ -125,10 +164,13 @@ void gambarLcd(uint32_t now) {
       tulisBaris(0, "SEPEDA TERKUNCI");
       tulisBaris(1, "Status: AMAN");
       break;
-    case LcdMode::Terbuka:
+    case LcdMode::Terbuka: {
+      char sisa[17];
+      formatSisaSewa(sisa, sizeof(sisa));
       tulisBaris(0, "SEPEDA TERBUKA");
-      tulisBaris(1, "Status: AMAN");
+      tulisBaris(1, sisa);
       break;
+    }
     case LcdMode::Alarm: {
       char sisa[17];
       uint32_t remaining = outputs::alarmRemainingMs() / 1000;
@@ -165,6 +207,7 @@ void begin() {
   gMessageUntilMs = 0;
   gMessageLine1[0] = '\0';
   gMessageLine2[0] = '\0';
+  gRentalDeadlineMs = 0;
   gLcdMode = LcdMode::Kosong;
   gLcdDirty = true;
 
@@ -219,6 +262,7 @@ void setLock(bool locked) {
   }
 
   gLocked = locked;
+  if (locked) gRentalDeadlineMs = 0;
   digitalWrite(RELAY_PIN, locked ? RELAY_OFF : RELAY_ON);
   gLcdDirty = true;
   Serial.printf("[OUTPUT] Relay=%s pin=%s -> %s\n",
@@ -285,6 +329,40 @@ void warningBeep() {
 
 bool isBeeping() {
   return gBeepActive;
+}
+
+void setRentalRemainingMinutes(uint32_t minutes) {
+  if (minutes == 0) {
+    clearRentalTimer();
+    return;
+  }
+
+  gRentalDeadlineMs = millis() + minutes * 60000UL;
+  gLcdDirty = true;
+  Serial.printf("[SEWA] Deadline LCD di-set %lu menit.\n",
+                (unsigned long)minutes);
+}
+
+void extendRentalMinutes(uint32_t minutes) {
+  if (minutes == 0) return;
+
+  const uint32_t sekarang = millis();
+  const uint32_t sisa = sisaSewaMs();
+  gRentalDeadlineMs = sekarang + sisa + minutes * 60000UL;
+  gLcdDirty = true;
+  Serial.printf("[SEWA] EXTEND +%lu menit, sisa ~%lu dtk.\n",
+                (unsigned long)minutes, (unsigned long)(sisa / 1000));
+}
+
+void clearRentalTimer() {
+  if (gRentalDeadlineMs == 0) return;
+  gRentalDeadlineMs = 0;
+  gLcdDirty = true;
+  Serial.println("[SEWA] Timer LCD dihapus.");
+}
+
+uint32_t rentalRemainingMs() {
+  return sisaSewaMs();
 }
 
 void showMessage(const char *line1, const char *line2, uint32_t durationMs) {

@@ -167,6 +167,8 @@ static void printOutputStatus() {
                 outputs::isAlarmActive() ? "ON" : "OFF",
                 (unsigned long)outputs::alarmRemainingMs(),
                 outputs::isBeeping() ? "ya" : "tidak");
+  Serial.printf("[OUTPUT] sisa sewa=%lu ms\n",
+                 (unsigned long)outputs::rentalRemainingMs());
 }
 
 static void handleLine(const char *line) {
