@@ -157,7 +157,16 @@ void gambarLcd(uint32_t now) {
     gLcdDirty = true;
   }
 
-  if (!gLcdDirty && mode != LcdMode::Alarm) return;
+  // Refresh rutin diperlukan alarm dan countdown sewa. Tanpa ini, guard
+  // menolak refresh Terbuka sehingga angka hanya terbaca sekali.
+  const bool butuhRefreshRutin =
+      mode == LcdMode::Alarm ||
+      (mode == LcdMode::Terbuka && gRentalDeadlineMs != 0);
+
+  if (!gLcdDirty && !butuhRefreshRutin) {
+    gLcdNextRefreshMs = now + LCD_STATUS_REFRESH_MS;
+    return;
+  }
 
   switch (mode) {
     case LcdMode::Terkunci:
